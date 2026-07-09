@@ -1,0 +1,10 @@
+# Build artifacts
+Builds/*/build/
+Builds/**/xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
+
+# Claude Code local settings
+.claude/settings.local.json

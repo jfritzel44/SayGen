@@ -1,0 +1,53 @@
+BasedOnStyle: LLVM
+
+# Basic indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 4
+AccessModifierOffset: -4
+
+# Line length
+ColumnLimit: 100
+
+# Braces: JUCE/C++ style
+BreakBeforeBraces: Allman
+
+# Pointers/references
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# Function / argument wrapping
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+
+# Short statements
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+
+# Constructor initializer lists
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
+
+# Preprocessor formatting
+IndentPPDirectives: BeforeHash
+
+# Spaces
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpacesInAngles: false
+SpaceAfterCStyleCast: false
+
+# Includes
+SortIncludes: false
+
+# Namespaces
+NamespaceIndentation: None
+
+# Comments
+ReflowComments: true
