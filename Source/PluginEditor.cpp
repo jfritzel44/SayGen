@@ -18,6 +18,8 @@ MySynthAudioProcessorEditor::MySynthAudioProcessorEditor (MySynthAudioProcessor&
       qwertyKeyboard (p.keyboardState),
       oscTypeKnob  (p.apvts, "oscType",  "Osc 1", &oscLookAndFeel),
       osc2TypeKnob (p.apvts, "osc2Type", "Osc 2",  &oscLookAndFeel),
+      osc1OctaveSelector (p.apvts, "osc1Octave", "Octave"),
+      osc2OctaveSelector (p.apvts, "osc2Octave", "Octave"),
       detuneKnob   (p.apvts, "detune",   "Detune", &oscLookAndFeel),
       pitchKnob    (p.apvts, "pitch",    "Pitch", &oscLookAndFeel),
       cutoffKnob    (p.apvts, "cutoff",    "Cutoff",    &oscLookAndFeel),
@@ -32,7 +34,10 @@ MySynthAudioProcessorEditor::MySynthAudioProcessorEditor (MySynthAudioProcessor&
       fltSustainKnob (p.apvts, "fltSustain", "Sustain",  &oscLookAndFeel),
       fltReleaseKnob (p.apvts, "fltRelease", "Release",  &oscLookAndFeel)
 {
-    setSize (1040, 780);
+    logoImage = juce::ImageCache::getFromMemory (BinaryData::logo_png,
+                                                 BinaryData::logo_pngSize);
+
+    setSize (1040, 880);
     startTimerHz (30);
     qwertyKeyboard.attachTo (*this);
 
@@ -41,6 +46,9 @@ MySynthAudioProcessorEditor::MySynthAudioProcessorEditor (MySynthAudioProcessor&
 
     osc2TypeKnob.getSlider().textFromValueFunction = osc2TypeName;
     addAndMakeVisible (osc2TypeKnob);
+
+    addAndMakeVisible (osc1OctaveSelector);
+    addAndMakeVisible (osc2OctaveSelector);
 
     detuneKnob.getSlider().setTextValueSuffix (" ct");
     addAndMakeVisible (detuneKnob);
@@ -108,6 +116,11 @@ void MySynthAudioProcessorEditor::paint (juce::Graphics& g)
     g.setFont (juce::FontOptions (11.0f));
     g.drawText ("MIDI", 8, 38, 32, 16, juce::Justification::centred);
 
+    if (logoImage.isValid())
+        g.drawImage (logoImage,
+                     { getWidth() / 2.0f - 112.5f, 22.5f, 225.0f, 75.0f },
+                     juce::RectanglePlacement::centred);
+
     auto drawSection = [&g] (juce::Rectangle<float> box, const juce::String& title)
     {
         g.setColour (juce::Colour (0xff3a3a3a));
@@ -120,36 +133,39 @@ void MySynthAudioProcessorEditor::paint (juce::Graphics& g)
                     juce::Justification::centred);
     };
 
-    drawSection ({ (float) getWidth() / 2.0f - 420.0f,  30.0f, 840.0f, 260.0f }, "Oscillators");
-    drawSection ({ 20.0f,  310.0f, 640.0f, 445.0f }, "Filter");
-    drawSection ({ 680.0f, 310.0f, 340.0f, 418.0f }, "Amp");
+    drawSection ({ (float) getWidth() / 2.0f - 420.0f,  130.0f, 840.0f, 260.0f }, "Oscillators");
+    drawSection ({ 20.0f,  410.0f, 640.0f, 445.0f }, "Filter");
+    drawSection ({ 680.0f, 410.0f, 340.0f, 418.0f }, "Amp");
 }
 
 void MySynthAudioProcessorEditor::resized()
 {
-    // Oscillators section: four knobs under the section title
-    juce::Rectangle<int> oscRow (getWidth() / 2 - 400, 62, 800, 220);
-    oscTypeKnob.setBounds  (oscRow.removeFromLeft (200));
-    osc2TypeKnob.setBounds (oscRow.removeFromLeft (200));
-    detuneKnob.setBounds   (oscRow.removeFromLeft (200));
-    pitchKnob.setBounds    (oscRow);
+    // Oscillators section: each osc knob gets its octave LED bank beside it,
+    // then detune and pitch
+    juce::Rectangle<int> oscRow (getWidth() / 2 - 400, 162, 800, 220);
+    oscTypeKnob.setBounds        (oscRow.removeFromLeft (170));
+    osc1OctaveSelector.setBounds (oscRow.removeFromLeft (70));
+    osc2TypeKnob.setBounds       (oscRow.removeFromLeft (170));
+    osc2OctaveSelector.setBounds (oscRow.removeFromLeft (70));
+    detuneKnob.setBounds         (oscRow.removeFromLeft (160));
+    pitchKnob.setBounds          (oscRow);
 
     // Filter section: cutoff row, then its envelope row (small knobs: the
     // 151-wide boxes cap the drawn knob at 81px vs the big rows' 108px)
-    juce::Rectangle<int> filterRow (40, 342, 600, 220);
+    juce::Rectangle<int> filterRow (40, 442, 600, 220);
     cutoffKnob.setBounds    (filterRow.removeFromLeft (200));
     resonanceKnob.setBounds (filterRow.removeFromLeft (200));
     envAmountKnob.setBounds (filterRow);
 
-    juce::Rectangle<int> filterEnvRow (38, 562, 604, 193);
+    juce::Rectangle<int> filterEnvRow (38, 662, 604, 193);
     fltAttackKnob.setBounds  (filterEnvRow.removeFromLeft (151));
     fltDecayKnob.setBounds   (filterEnvRow.removeFromLeft (151));
     fltSustainKnob.setBounds (filterEnvRow.removeFromLeft (151));
     fltReleaseKnob.setBounds (filterEnvRow);
 
     // Amp section: ADSR in a 2x2 grid
-    attackKnob.setBounds  (699, 342, 151, 193);
-    decayKnob.setBounds   (850, 342, 151, 193);
-    sustainKnob.setBounds (699, 535, 151, 193);
-    releaseKnob.setBounds (850, 535, 151, 193);
+    attackKnob.setBounds  (699, 442, 151, 193);
+    decayKnob.setBounds   (850, 442, 151, 193);
+    sustainKnob.setBounds (699, 635, 151, 193);
+    releaseKnob.setBounds (850, 635, 151, 193);
 }

@@ -4,6 +4,7 @@
 #include "OscKnobLookAndFeel.h"
 #include "QwertyMidiKeyboard.h"
 #include "LabeledKnob.h"
+#include "LedOctaveSelector.h"
 
 class MySynthAudioProcessorEditor : public juce::AudioProcessorEditor,
                                     public juce::Timer
@@ -23,9 +24,12 @@ private:
 
     OscKnobLookAndFeel oscLookAndFeel;
     QwertyMidiKeyboard qwertyKeyboard;
+    juce::Image logoImage;
 
     LabeledKnob oscTypeKnob;
     LabeledKnob osc2TypeKnob;
+    LedOctaveSelector osc1OctaveSelector;
+    LedOctaveSelector osc2OctaveSelector;
     LabeledKnob detuneKnob;
     LabeledKnob pitchKnob;
     LabeledKnob cutoffKnob;

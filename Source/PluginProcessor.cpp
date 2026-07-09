@@ -14,6 +14,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
         "osc2Type", "Oscillator 2 Type",
         juce::NormalisableRange<float> (0.0f, 4.0f, 1.0f), 0.0f));
 
+    // Octave range: 0 = 16', 1 = 8', 2 = 4', 3 = 2'
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "osc1Octave", "Oscillator 1 Octave",
+        juce::NormalisableRange<float> (0.0f, 3.0f, 1.0f), 1.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "osc2Octave", "Oscillator 2 Octave",
+        juce::NormalisableRange<float> (0.0f, 3.0f, 1.0f), 1.0f));
+
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         "detune", "Oscillator 2 Detune",
         juce::NormalisableRange<float> (-50.0f, 50.0f, 0.1f), 7.0f));
@@ -133,6 +142,8 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int /*samplesPerBl
         auto* voice = new MySynthVoice();
         voice->oscType        = &oscType;
         voice->osc2Type       = &osc2Type;
+        voice->osc1Octave     = &osc1Octave;
+        voice->osc2Octave     = &osc2Octave;
         voice->detuneCents    = &detuneCents;
         voice->pitchSemitones = &pitchSemitones;
         voice->attackSeconds  = &attackSeconds;
@@ -185,6 +196,8 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // Sync parameters to atomics read by voices
     oscType.store ((int)std::round (apvts.getRawParameterValue ("oscType")->load()));
     osc2Type.store ((int)std::round (apvts.getRawParameterValue ("osc2Type")->load()));
+    osc1Octave.store ((int)std::round (apvts.getRawParameterValue ("osc1Octave")->load()));
+    osc2Octave.store ((int)std::round (apvts.getRawParameterValue ("osc2Octave")->load()));
     detuneCents.store (apvts.getRawParameterValue ("detune")->load());
     pitchSemitones.store (apvts.getRawParameterValue ("pitch")->load());
     attackSeconds.store (apvts.getRawParameterValue ("attack")->load());

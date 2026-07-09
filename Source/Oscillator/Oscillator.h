@@ -12,6 +12,8 @@ struct MySynthVoice : public juce::SynthesiserVoice
 {
     std::atomic<int>*   oscType        = nullptr;
     std::atomic<int>*   osc2Type       = nullptr;  // 0 = off, 1..4 = waveform
+    std::atomic<int>*   osc1Octave     = nullptr;  // 0=16', 1=8', 2=4', 3=2'
+    std::atomic<int>*   osc2Octave     = nullptr;
     std::atomic<float>* pitchSemitones = nullptr;
     std::atomic<float>* attackSeconds  = nullptr;
     std::atomic<float>* decaySeconds   = nullptr;
@@ -89,10 +91,16 @@ struct MySynthVoice : public juce::SynthesiserVoice
 
         const double semitones  = pitchSemitones ? (double) pitchSemitones->load() : 0.0;
         const double multiplier = std::pow (2.0, semitones / 12.0);
-        auto phaseDelta = twoPi * frequency * multiplier * drift / getSampleRate();
+        const auto baseDelta = twoPi * frequency * multiplier * drift / getSampleRate();
+
+        // Octave range switches, Little Phatty style: 16' is an octave below
+        // the played note, 8' is unison, 4' and 2' one and two octaves up
+        const double range1 = std::exp2 ((osc1Octave ? osc1Octave->load() : 1) - 1.0);
+        const double range2 = std::exp2 ((osc2Octave ? osc2Octave->load() : 1) - 1.0);
+        auto phaseDelta = baseDelta * range1;
 
         const double detune = detuneCents ? (double) detuneCents->load() : 0.0;
-        auto phaseDelta2 = phaseDelta * std::pow (2.0, detune / 1200.0);
+        auto phaseDelta2 = baseDelta * range2 * std::pow (2.0, detune / 1200.0);
 
         const float maxCutoff  = (float) (getSampleRate() * 0.45);
         const float baseCutoff = juce::jlimit (20.0f, maxCutoff,

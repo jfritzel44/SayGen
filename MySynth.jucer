@@ -17,9 +17,20 @@
       <FILE id="vaigkB" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
       <FILE id="laf001" name="OscKnobLookAndFeel.h" compile="0" resource="0"
             file="Source/OscKnobLookAndFeel.h"/>
+      <FILE id="lkn001" name="LabeledKnob.h" compile="0" resource="0" file="Source/LabeledKnob.h"/>
+      <FILE id="los001" name="LedOctaveSelector.h" compile="0" resource="0"
+            file="Source/LedOctaveSelector.h"/>
+      <FILE id="qwk001" name="QwertyMidiKeyboard.h" compile="0" resource="0"
+            file="Source/QwertyMidiKeyboard.h"/>
       <GROUP id="{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}" name="Oscillator">
         <FILE id="osc001" name="Oscillator.h" compile="0" resource="0"
               file="Source/Oscillator/Oscillator.h"/>
+      </GROUP>
+      <GROUP id="{B2C3D4E5-F607-8901-BCDE-F23456789012}" name="assets">
+        <FILE id="img001" name="osc.png" compile="0" resource="1" file="Source/assets/osc.png"/>
+        <FILE id="img002" name="led_off.png" compile="0" resource="1" file="Source/assets/led_off.png"/>
+        <FILE id="img003" name="led_on.png" compile="0" resource="1" file="Source/assets/led_on.png"/>
+        <FILE id="img004" name="logo.png" compile="0" resource="1" file="Source/assets/logo.png"/>
       </GROUP>
     </GROUP>
   </MAINGROUP>

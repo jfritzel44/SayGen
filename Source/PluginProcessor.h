@@ -12,6 +12,8 @@ public:
     std::atomic<bool>  midiActivity   { false };
     std::atomic<int>   oscType        { 0 };
     std::atomic<int>   osc2Type       { 0 };
+    std::atomic<int>   osc1Octave     { 1 };
+    std::atomic<int>   osc2Octave     { 1 };
     std::atomic<float> pitchSemitones { 0.0f };
     std::atomic<float> attackSeconds  { 0.01f };
     std::atomic<float> decaySeconds   { 0.1f };
