@@ -30,22 +30,22 @@ public:
     void paint (juce::Graphics& g) override
     {
         g.setColour (juce::Colours::white);
-        g.setFont (juce::FontOptions (13.0f));
-        g.drawText (titleText, getLocalBounds().withTrimmedTop (8).withHeight (22),
+        g.setFont (juce::FontOptions (10.5f));
+        g.drawText (titleText, getLocalBounds().withTrimmedTop (2).withHeight (18),
                     juce::Justification::centred);
 
         static const char* names[] = { "2", "4", "8", "16" };
         for (int row = 0; row < 4; ++row)
         {
             auto r = rowBounds (row);
-            auto led = r.removeFromLeft (r.getHeight()).reduced (4).toFloat();
+            auto led = r.removeFromLeft (r.getHeight()).reduced (2).toFloat();
 
             const auto& img = (valueForRow (row) == selected) ? ledOn : ledOff;
             if (img.isValid())
                 g.drawImage (img, led);
 
             g.setColour (juce::Colours::white);
-            g.setFont (juce::FontOptions (13.0f));
+            g.setFont (juce::FontOptions (10.5f));
             g.drawText (names[row], r, juce::Justification::centredLeft);
         }
     }
@@ -55,7 +55,7 @@ private:
     // lines up with the knobs beside it
     juce::Rectangle<int> rowsArea() const
     {
-        return getLocalBounds().withTrimmedTop (50).withTrimmedBottom (36);
+        return getLocalBounds().withTrimmedTop (20).withTrimmedBottom (2);
     }
 
     juce::Rectangle<int> rowBounds (int row) const

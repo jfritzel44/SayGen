@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="Sooq25" name="MySynth" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1"
-              pluginIsSynth="1" pluginWantsMidiInput="1"
-              pluginVSTCategory="kPlugCategSynth"
-              pluginVST3Category="Instrument|Synth"
-              pluginAUMainType="'aumu'">
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" pluginIsSynth="1"
+              pluginWantsMidiInput="1" pluginVSTCategory="kPlugCategSynth"
+              pluginVST3Category="Instrument|Synth" pluginAUMainType="'aumu'"
+              pluginCharacteristicsValue="pluginIsSynth">
   <MAINGROUP id="gEyweJ" name="MySynth">
     <GROUP id="{6F83AA7A-FCF7-FAEA-14F2-D9AE4572D91E}" name="Source">
       <FILE id="jU4puW" name="PluginProcessor.cpp" compile="1" resource="0"
@@ -22,15 +21,21 @@
             file="Source/LedOctaveSelector.h"/>
       <FILE id="qwk001" name="QwertyMidiKeyboard.h" compile="0" resource="0"
             file="Source/QwertyMidiKeyboard.h"/>
+      <FILE id="prs001" name="Presets.h" compile="0" resource="0" file="Source/Presets.h"/>
+      <FILE id="lcd001" name="LcdScreen.h" compile="0" resource="0" file="Source/LcdScreen.h"/>
+      <FILE id="stb001" name="SyncToggleButton.h" compile="0" resource="0"
+            file="Source/SyncToggleButton.h"/>
+      <FILE id="osp001" name="Oscilloscope.h" compile="0" resource="0" file="Source/Oscilloscope.h"/>
       <GROUP id="{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}" name="Oscillator">
-        <FILE id="osc001" name="Oscillator.h" compile="0" resource="0"
-              file="Source/Oscillator/Oscillator.h"/>
+        <FILE id="osc001" name="Oscillator.h" compile="0" resource="0" file="Source/Oscillator/Oscillator.h"/>
       </GROUP>
       <GROUP id="{B2C3D4E5-F607-8901-BCDE-F23456789012}" name="assets">
         <FILE id="img001" name="osc.png" compile="0" resource="1" file="Source/assets/osc.png"/>
         <FILE id="img002" name="led_off.png" compile="0" resource="1" file="Source/assets/led_off.png"/>
         <FILE id="img003" name="led_on.png" compile="0" resource="1" file="Source/assets/led_on.png"/>
         <FILE id="img004" name="logo.png" compile="0" resource="1" file="Source/assets/logo.png"/>
+        <FILE id="img005" name="toggle_on.png" compile="0" resource="1" file="Source/assets/toggle_on.png"/>
+        <FILE id="img006" name="toggle_off.png" compile="0" resource="1" file="Source/assets/toggle_off.png"/>
       </GROUP>
     </GROUP>
   </MAINGROUP>

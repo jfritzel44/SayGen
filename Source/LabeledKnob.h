@@ -27,7 +27,7 @@ public:
 
         label.setText (title, juce::dontSendNotification);
         label.setJustificationType (juce::Justification::centred);
-        label.setFont (juce::FontOptions (13.0f));
+        label.setFont (juce::FontOptions (10.5f));
         addAndMakeVisible (label);
     }
 
@@ -41,9 +41,9 @@ public:
     void resized() override
     {
         auto b = getLocalBounds();
-        label.setBounds  (b.getX() + 10, b.getY() + 8,  b.getWidth() - 20, 22);
-        slider.setBounds (b.getX() + 35, b.getY() + 50, b.getWidth() - 70,
-                          b.getHeight() - 86);
+        label.setBounds  (b.getX() + 2,  b.getY() + 2,  b.getWidth() - 4, 18);
+        slider.setBounds (b.getX() + 10, b.getY() + 20, b.getWidth() - 20,
+                          b.getHeight() - 22);
     }
 
 private:

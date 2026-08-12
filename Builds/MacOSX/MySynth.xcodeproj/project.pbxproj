@@ -45,6 +45,7 @@
 		57AB5B0E5DB7EF58B4462A61 /* include_juce_audio_utils.mm */ = {isa = PBXBuildFile; fileRef = CE95F4A9FF207D49BEE8B711; };
 		5D187550E05C90B69036B984 /* include_juce_gui_basics_5.cpp */ = {isa = PBXBuildFile; fileRef = 87AA70BD7BCFAC2B1F7DB1D0; };
 		665086AAEF27A9001D6AEF80 /* PluginEditor.cpp */ = {isa = PBXBuildFile; fileRef = E98948D651D342F3F744AA52; };
+		67E3EA93C5FC366AC1BF1050 /* BinaryData.cpp */ = {isa = PBXBuildFile; fileRef = 6142B2968F35D9C26AC560CC; };
 		6AD09B89ACC8AF54E327C297 /* include_juce_audio_plugin_client_Standalone.cpp */ = {isa = PBXBuildFile; fileRef = CE6BC0107D8B08F77810CF5D; };
 		6D4DC8D89529B97AFAB9E7AC /* include_juce_audio_plugin_client_AU_1.mm */ = {isa = PBXBuildFile; fileRef = 5BF8E896C9539792DB187940; };
 		6FB6F4F2EDD4133A7D8A6799 /* include_juce_core.mm */ = {isa = PBXBuildFile; fileRef = 21128D9A28E4D96EA76A7743; };
@@ -67,6 +68,7 @@
 		BADA743C153C3F9A396FEFA4 /* include_juce_audio_basics.mm */ = {isa = PBXBuildFile; fileRef = 7A5229D12A2731D1D9EE50EF; };
 		BEEA99C412B7C21A1D73EAE9 /* include_juce_audio_formats.mm */ = {isa = PBXBuildFile; fileRef = 01CFA9B83635A0538050EE0B; };
 		C0FC3B5A936FF40FF7278B29 /* CoreAudio.framework */ = {isa = PBXBuildFile; fileRef = 6F9C532A619EA5ED3FEFD8E3; };
+		C4A89163826EE6B6FFF579B1 /* BinaryData2.cpp */ = {isa = PBXBuildFile; fileRef = E0A498388C4FE5EE7EC12DA5; };
 		C5709DB25875511CC5710460 /* AU */ = {isa = PBXBuildFile; fileRef = 1EBF09ADB41C8A89606E9B5B; };
 		C7892947B2DB705A793B6366 /* IOKit.framework */ = {isa = PBXBuildFile; fileRef = E17F884039BE4D148CBFE7F5; };
 		CB07231258F2D147A3EAC555 /* QuartzCore.framework */ = {isa = PBXBuildFile; fileRef = D1810E48D86EAD37391DB304; };
@@ -76,20 +78,24 @@
 		E2DC4103FD0519CB0F81F8B1 /* include_juce_audio_processors.mm */ = {isa = PBXBuildFile; fileRef = 239314E7BCE812247FF3AE85; };
 		E73955BB78846651A825BD87 /* include_juce_audio_devices.mm */ = {isa = PBXBuildFile; fileRef = 744306EDEA92ACA57D94F8CF; };
 		ECBB7FCA7B2148A633042AB1 /* AudioToolbox.framework */ = {isa = PBXBuildFile; fileRef = 693CE7A4D301E50F698FA5FD; };
-		BD9876543210FEDCBA098765 /* BinaryData.cpp */ = {isa = PBXBuildFile; fileRef = BD1234567890ABCDEF012345; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0005869112B0245AACD2DFBD /* QwertyMidiKeyboard.h */ /* QwertyMidiKeyboard.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QwertyMidiKeyboard.h; path = ../../Source/QwertyMidiKeyboard.h; sourceTree = SOURCE_ROOT; };
 		0143164F63322CF5C15849CE /* include_juce_graphics_Sheenbidi.c */ /* include_juce_graphics_Sheenbidi.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = include_juce_graphics_Sheenbidi.c; path = ../../JuceLibraryCode/include_juce_graphics_Sheenbidi.c; sourceTree = SOURCE_ROOT; };
 		01CFA9B83635A0538050EE0B /* include_juce_audio_formats.mm */ /* include_juce_audio_formats.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_formats.mm; path = ../../JuceLibraryCode/include_juce_audio_formats.mm; sourceTree = SOURCE_ROOT; };
+		029448C6BF33631442BBF5D2 /* logo.png */ /* logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = logo.png; path = ../../Source/assets/logo.png; sourceTree = SOURCE_ROOT; };
+		050EC5DC19F8D83DA3D909EB /* LabeledKnob.h */ /* LabeledKnob.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LabeledKnob.h; path = ../../Source/LabeledKnob.h; sourceTree = SOURCE_ROOT; };
 		09649A591DB63F2FB310BCF1 /* VST3 Manifest Helper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = juce_vst3_helper; sourceTree = BUILT_PRODUCTS_DIR; };
 		09AE6EBEB0E20839696749B6 /* include_juce_data_structures.mm */ /* include_juce_data_structures.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_data_structures.mm; path = ../../JuceLibraryCode/include_juce_data_structures.mm; sourceTree = SOURCE_ROOT; };
 		0A119AC7D03B985F3E61842A /* Accelerate.framework */ /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		0A27861551C40B03DF9159B1 /* juce_events */ /* juce_events */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_events; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_events; sourceTree = "<absolute>"; };
+		0DF1E556706C940BEF03F6C5 /* Presets.h */ /* Presets.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Presets.h; path = ../../Source/Presets.h; sourceTree = SOURCE_ROOT; };
 		1DDB9030575891B12ED1BDB6 /* MetalKit.framework */ /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		1EBF09ADB41C8A89606E9B5B /* AU */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MySynth.component; sourceTree = BUILT_PRODUCTS_DIR; };
 		21128D9A28E4D96EA76A7743 /* include_juce_core.mm */ /* include_juce_core.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_core.mm; path = ../../JuceLibraryCode/include_juce_core.mm; sourceTree = SOURCE_ROOT; };
 		239314E7BCE812247FF3AE85 /* include_juce_audio_processors.mm */ /* include_juce_audio_processors.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_processors.mm; path = ../../JuceLibraryCode/include_juce_audio_processors.mm; sourceTree = SOURCE_ROOT; };
+		26C36FFACD10C1BD36676164 /* BinaryData.h */ /* BinaryData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BinaryData.h; path = ../../JuceLibraryCode/BinaryData.h; sourceTree = SOURCE_ROOT; };
 		27E957D1A22193D86EE8382D /* juce_audio_formats */ /* juce_audio_formats */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_formats; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_formats; sourceTree = "<absolute>"; };
 		281DAF6A93072DFB3134AA7F /* juce_audio_processors_headless */ /* juce_audio_processors_headless */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_processors_headless; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_processors_headless; sourceTree = "<absolute>"; };
 		286B14A92619ADA7357BC2B2 /* Info-VST3.plist */ /* Info-VST3.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-VST3.plist"; path = "Info-VST3.plist"; sourceTree = SOURCE_ROOT; };
@@ -97,10 +103,15 @@
 		303EEC9916235B61A535DD26 /* include_juce_graphics_Harfbuzz.cpp */ /* include_juce_graphics_Harfbuzz.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_graphics_Harfbuzz.cpp; path = ../../JuceLibraryCode/include_juce_graphics_Harfbuzz.cpp; sourceTree = SOURCE_ROOT; };
 		33B6B6699E569FCE3F2992A1 /* Info-AU.plist */ /* Info-AU.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-AU.plist"; path = "Info-AU.plist"; sourceTree = SOURCE_ROOT; };
 		388B02872BF73006BE3BF487 /* DiscRecording.framework */ /* DiscRecording.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DiscRecording.framework; path = System/Library/Frameworks/DiscRecording.framework; sourceTree = SDKROOT; };
+		3928FFAC7929627D4640463E /* OscKnobLookAndFeel.h */ /* OscKnobLookAndFeel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OscKnobLookAndFeel.h; path = ../../Source/OscKnobLookAndFeel.h; sourceTree = SOURCE_ROOT; };
 		3BDED30583640B8F18BAF1D3 /* PluginProcessor.h */ /* PluginProcessor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PluginProcessor.h; path = ../../Source/PluginProcessor.h; sourceTree = SOURCE_ROOT; };
+		3E477177963431CC3AD01FA1 /* toggle_off.png */ /* toggle_off.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = toggle_off.png; path = ../../Source/assets/toggle_off.png; sourceTree = SOURCE_ROOT; };
+		3F43739DC68B2EFB6D37B875 /* LedOctaveSelector.h */ /* LedOctaveSelector.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LedOctaveSelector.h; path = ../../Source/LedOctaveSelector.h; sourceTree = SOURCE_ROOT; };
 		41D89C808D56AC2D6EA0EA2D /* include_juce_audio_plugin_client_ARA.cpp */ /* include_juce_audio_plugin_client_ARA.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_plugin_client_ARA.cpp; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_ARA.cpp; sourceTree = SOURCE_ROOT; };
 		42610D6C00258F892632B92A /* Metal.framework */ /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		49CDDC973686BC713C80C372 /* CoreAudioKit.framework */ /* CoreAudioKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudioKit.framework; path = System/Library/Frameworks/CoreAudioKit.framework; sourceTree = SDKROOT; };
+		4BFBB822CDFD73BA9276161F /* Oscillator.h */ /* Oscillator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Oscillator.h; path = ../../Source/Oscillator/Oscillator.h; sourceTree = SOURCE_ROOT; };
+		4DF8D429E7A215D99A1BF30A /* led_off.png */ /* led_off.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = led_off.png; path = ../../Source/assets/led_off.png; sourceTree = SOURCE_ROOT; };
 		526CDC4E2ACCB27505947BC7 /* VST3 */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MySynth.vst3; sourceTree = BUILT_PRODUCTS_DIR; };
 		57924354A1681A32F6AFB2C8 /* Standalone Plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MySynth.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		584B886B518C472FB94B1440 /* Cocoa.framework */ /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
@@ -109,11 +120,13 @@
 		5CF2A7A52B5D1373BA0C1235 /* WebKit.framework */ /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		5DD16509894AAED1BCAD5BB7 /* JucePluginDefines.h */ /* JucePluginDefines.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = JucePluginDefines.h; path = ../../JuceLibraryCode/JucePluginDefines.h; sourceTree = SOURCE_ROOT; };
 		5F4227258BEC08148FBBE6EE /* juce_gui_basics */ /* juce_gui_basics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_gui_basics; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_gui_basics; sourceTree = "<absolute>"; };
+		6142B2968F35D9C26AC560CC /* BinaryData.cpp */ /* BinaryData.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BinaryData.cpp; path = ../../JuceLibraryCode/BinaryData.cpp; sourceTree = SOURCE_ROOT; };
 		62D6671907ECC59D5C229C02 /* juce_dsp */ /* juce_dsp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_dsp; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_dsp; sourceTree = "<absolute>"; };
 		62D7230782B9E30BD48DB5D0 /* juce_graphics */ /* juce_graphics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_graphics; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_graphics; sourceTree = "<absolute>"; };
 		68AD00D944564283F101BE3C /* RecentFilesMenuTemplate.nib */ /* RecentFilesMenuTemplate.nib */ = {isa = PBXFileReference; lastKnownFileType = file.nib; name = RecentFilesMenuTemplate.nib; path = RecentFilesMenuTemplate.nib; sourceTree = SOURCE_ROOT; };
 		693CE7A4D301E50F698FA5FD /* AudioToolbox.framework */ /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		6BFAEDFA57A907386279F45B /* juce_audio_processors */ /* juce_audio_processors */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_processors; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_processors; sourceTree = "<absolute>"; };
+		6E5D4F5C87CA2BA51BBF34B6 /* SyncToggleButton.h */ /* SyncToggleButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SyncToggleButton.h; path = ../../Source/SyncToggleButton.h; sourceTree = SOURCE_ROOT; };
 		6F9C532A619EA5ED3FEFD8E3 /* CoreAudio.framework */ /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		70307034065DB3575A66A262 /* juce_audio_utils */ /* juce_audio_utils */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_utils; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_utils; sourceTree = "<absolute>"; };
 		71AF0C5582F7DBDE40164B71 /* include_juce_audio_processors_headless_ara.cpp */ /* include_juce_audio_processors_headless_ara.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_processors_headless_ara.cpp; path = ../../JuceLibraryCode/include_juce_audio_processors_headless_ara.cpp; sourceTree = SOURCE_ROOT; };
@@ -127,14 +140,18 @@
 		9265F02751F898A992995F7B /* include_juce_audio_processors_headless_lv2_libs.cpp */ /* include_juce_audio_processors_headless_lv2_libs.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_processors_headless_lv2_libs.cpp; path = ../../JuceLibraryCode/include_juce_audio_processors_headless_lv2_libs.cpp; sourceTree = SOURCE_ROOT; };
 		A2B4638C3469DD5432C22672 /* include_juce_dsp.mm */ /* include_juce_dsp.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_dsp.mm; path = ../../JuceLibraryCode/include_juce_dsp.mm; sourceTree = SOURCE_ROOT; };
 		A7963C920FF3B963B9448337 /* include_juce_gui_basics.mm */ /* include_juce_gui_basics.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_gui_basics.mm; path = ../../JuceLibraryCode/include_juce_gui_basics.mm; sourceTree = SOURCE_ROOT; };
+		A9F31B14B6F5DC0B9579DB9B /* Oscilloscope.h */ /* Oscilloscope.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Oscilloscope.h; path = ../../Source/Oscilloscope.h; sourceTree = SOURCE_ROOT; };
 		AACF1A5940E720109C400265 /* Info-Standalone_Plugin.plist */ /* Info-Standalone_Plugin.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-Standalone_Plugin.plist"; path = "Info-Standalone_Plugin.plist"; sourceTree = SOURCE_ROOT; };
 		AB6499670636368CF82DB352 /* juce_VST3ManifestHelper.cpp */ /* juce_VST3ManifestHelper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = juce_VST3ManifestHelper.cpp; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_plugin_client/VST3/juce_VST3ManifestHelper.cpp; sourceTree = "<absolute>"; };
 		AE668E30050DF6DE846259E3 /* include_juce_gui_extra.mm */ /* include_juce_gui_extra.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_gui_extra.mm; path = ../../JuceLibraryCode/include_juce_gui_extra.mm; sourceTree = SOURCE_ROOT; };
 		BACFAFA23E2E04C4E4FFAC33 /* include_juce_audio_plugin_client_VST3.mm */ /* include_juce_audio_plugin_client_VST3.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_plugin_client_VST3.mm; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_VST3.mm; sourceTree = SOURCE_ROOT; };
+		BE388690A22150F0F5B19ECB /* osc.png */ /* osc.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = osc.png; path = ../../Source/assets/osc.png; sourceTree = SOURCE_ROOT; };
 		C54FB54294D7C8C95801CB5E /* include_juce_audio_processors_headless.mm */ /* include_juce_audio_processors_headless.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_processors_headless.mm; path = ../../JuceLibraryCode/include_juce_audio_processors_headless.mm; sourceTree = SOURCE_ROOT; };
 		C8B83067263DB9EC56FAEE0A /* include_juce_audio_plugin_client_AU_2.mm */ /* include_juce_audio_plugin_client_AU_2.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_plugin_client_AU_2.mm; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_AU_2.mm; sourceTree = SOURCE_ROOT; };
 		C9CC567980DE26FA6369E6A9 /* PluginEditor.h */ /* PluginEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PluginEditor.h; path = ../../Source/PluginEditor.h; sourceTree = SOURCE_ROOT; };
 		CA7C76E3A73ACEB0B8F33F81 /* juce_audio_devices */ /* juce_audio_devices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_devices; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_devices; sourceTree = "<absolute>"; };
+		CB4DE0F2C4E79EBDF609CE76 /* toggle_on.png */ /* toggle_on.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = toggle_on.png; path = ../../Source/assets/toggle_on.png; sourceTree = SOURCE_ROOT; };
+		CC8BD4BE7340753F3A74DEA2 /* LcdScreen.h */ /* LcdScreen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LcdScreen.h; path = ../../Source/LcdScreen.h; sourceTree = SOURCE_ROOT; };
 		CE6BC0107D8B08F77810CF5D /* include_juce_audio_plugin_client_Standalone.cpp */ /* include_juce_audio_plugin_client_Standalone.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_plugin_client_Standalone.cpp; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_Standalone.cpp; sourceTree = SOURCE_ROOT; };
 		CE95F4A9FF207D49BEE8B711 /* include_juce_audio_utils.mm */ /* include_juce_audio_utils.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_utils.mm; path = ../../JuceLibraryCode/include_juce_audio_utils.mm; sourceTree = SOURCE_ROOT; };
 		CF30BEB64596EF23FCB16EEB /* juce_audio_plugin_client */ /* juce_audio_plugin_client */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_plugin_client; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_plugin_client; sourceTree = "<absolute>"; };
@@ -145,15 +162,16 @@
 		D778FE0B82C584CB40933A0D /* AudioUnit.framework */ /* AudioUnit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioUnit.framework; path = System/Library/Frameworks/AudioUnit.framework; sourceTree = SDKROOT; };
 		D84CC41DBD34674997E935E5 /* PluginProcessor.cpp */ /* PluginProcessor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PluginProcessor.cpp; path = ../../Source/PluginProcessor.cpp; sourceTree = SOURCE_ROOT; };
 		DB10C6163B3EE52B553ED5E5 /* Security.framework */ /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		E0A498388C4FE5EE7EC12DA5 /* BinaryData2.cpp */ /* BinaryData2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BinaryData2.cpp; path = ../../JuceLibraryCode/BinaryData2.cpp; sourceTree = SOURCE_ROOT; };
 		E17F884039BE4D148CBFE7F5 /* IOKit.framework */ /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		E3BFA747F7E24A94D0C14AF1 /* juce_gui_extra */ /* juce_gui_extra */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_gui_extra; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_gui_extra; sourceTree = "<absolute>"; };
 		E6D3CC52C42D4F0E5A3D8CDE /* Foundation.framework */ /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		E719D3338C7B780D78280F3E /* include_juce_events.mm */ /* include_juce_events.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_events.mm; path = ../../JuceLibraryCode/include_juce_events.mm; sourceTree = SOURCE_ROOT; };
 		E98948D651D342F3F744AA52 /* PluginEditor.cpp */ /* PluginEditor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PluginEditor.cpp; path = ../../Source/PluginEditor.cpp; sourceTree = SOURCE_ROOT; };
 		EB69983009B7ED1C6A28A022 /* juce_audio_basics */ /* juce_audio_basics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_basics; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_basics; sourceTree = "<absolute>"; };
+		EC9C578999A59ECF26157FD5 /* led_on.png */ /* led_on.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = led_on.png; path = ../../Source/assets/led_on.png; sourceTree = SOURCE_ROOT; };
 		F0C9FBC156A0AD5F2CF14D4B /* Info-VST3_Manifest_Helper.plist */ /* Info-VST3_Manifest_Helper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-VST3_Manifest_Helper.plist"; path = "Info-VST3_Manifest_Helper.plist"; sourceTree = SOURCE_ROOT; };
 		F18C510E1C174A1C328587BF /* juce_core */ /* juce_core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_core; path = /Users/jalex/Desktop/audioplug/JUCE/modules/juce_core; sourceTree = "<absolute>"; };
-		BD1234567890ABCDEF012345 /* BinaryData.cpp */ /* BinaryData.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BinaryData.cpp; path = ../../JuceLibraryCode/BinaryData.cpp; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -280,6 +298,19 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		5EF60ACD681B11A18D852BC4 /* assets */ = {
+			isa = PBXGroup;
+			children = (
+				BE388690A22150F0F5B19ECB,
+				4DF8D429E7A215D99A1BF30A,
+				EC9C578999A59ECF26157FD5,
+				029448C6BF33631442BBF5D2,
+				CB4DE0F2C4E79EBDF609CE76,
+				3E477177963431CC3AD01FA1,
+			);
+			name = assets;
+			sourceTree = "<group>";
+		};
 		6324F4D03EDAEEA7E290A144 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -302,6 +333,14 @@
 				68AD00D944564283F101BE3C,
 			);
 			name = Resources;
+			sourceTree = "<group>";
+		};
+		72FC981A748F7F07A4255F3A /* Oscillator */ = {
+			isa = PBXGroup;
+			children = (
+				4BFBB822CDFD73BA9276161F,
+			);
+			name = Oscillator;
 			sourceTree = "<group>";
 		};
 		942AA17007AEFF73323858DB /* JUCE Modules */ = {
@@ -328,6 +367,9 @@
 		AB562A286BC8C0DC60DC5F57 /* JUCE Library Code */ = {
 			isa = PBXGroup;
 			children = (
+				6142B2968F35D9C26AC560CC,
+				26C36FFACD10C1BD36676164,
+				E0A498388C4FE5EE7EC12DA5,
 				7A5229D12A2731D1D9EE50EF,
 				744306EDEA92ACA57D94F8CF,
 				01CFA9B83635A0538050EE0B,
@@ -368,6 +410,16 @@
 				3BDED30583640B8F18BAF1D3,
 				E98948D651D342F3F744AA52,
 				C9CC567980DE26FA6369E6A9,
+				3928FFAC7929627D4640463E,
+				050EC5DC19F8D83DA3D909EB,
+				3F43739DC68B2EFB6D37B875,
+				0005869112B0245AACD2DFBD,
+				0DF1E556706C940BEF03F6C5,
+				CC8BD4BE7340753F3A74DEA2,
+				6E5D4F5C87CA2BA51BBF34B6,
+				A9F31B14B6F5DC0B9579DB9B,
+				72FC981A748F7F07A4255F3A,
+				5EF60ACD681B11A18D852BC4,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -786,9 +838,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BD9876543210FEDCBA098765,
 				20DB7A2B7F6776ED65CA2B49,
 				665086AAEF27A9001D6AEF80,
+				67E3EA93C5FC366AC1BF1050,
+				C4A89163826EE6B6FFF579B1,
 				BADA743C153C3F9A396FEFA4,
 				E73955BB78846651A825BD87,
 				BEEA99C412B7C21A1D73EAE9,
@@ -918,7 +971,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -927,9 +980,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -938,10 +991,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1034,7 +1087,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -1043,9 +1096,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -1054,10 +1107,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1150,7 +1203,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -1159,9 +1212,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -1170,10 +1223,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1268,7 +1321,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -1277,9 +1330,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -1288,10 +1341,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1384,7 +1437,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -1393,9 +1446,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -1404,10 +1457,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1511,7 +1564,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -1520,9 +1573,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -1531,10 +1584,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1677,7 +1730,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -1686,9 +1739,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -1697,10 +1750,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1792,7 +1845,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -1801,9 +1854,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -1812,10 +1865,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1961,7 +2014,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -1970,9 +2023,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -1981,10 +2034,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -2075,7 +2128,7 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
-					"JucePlugin_IsSynth=0",
+					"JucePlugin_IsSynth=1",
 					"JucePlugin_WantsMidiInput=0",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
@@ -2084,9 +2137,9 @@
 					"JucePlugin_VersionCode=0x10000",
 					"JucePlugin_VersionString=\\\"1.0.0\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategEffect",
-					"JucePlugin_Vst3Category=\\\"Fx\\\"",
-					"JucePlugin_AUMainType=\\'aufx\\'",
+					"JucePlugin_VSTCategory=kPlugCategSynth",
+					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
+					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=MySynthAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
@@ -2095,10 +2148,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=0",
+					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757278",
+					"JucePlugin_IAAType=0x61757267",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",

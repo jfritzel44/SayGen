@@ -1,6 +1,8 @@
 #pragma once
 #include <JuceHeader.h>
 #include "Oscillator/Oscillator.h"
+#include "Oscilloscope.h"
+#include "Presets.h"
 
 //==============================================================================
 class MySynthAudioProcessor : public juce::AudioProcessor
@@ -14,6 +16,7 @@ public:
     std::atomic<int>   osc2Type       { 0 };
     std::atomic<int>   osc1Octave     { 1 };
     std::atomic<int>   osc2Octave     { 1 };
+    std::atomic<bool>  oscSync        { false };
     std::atomic<float> pitchSemitones { 0.0f };
     std::atomic<float> attackSeconds  { 0.01f };
     std::atomic<float> decaySeconds   { 0.1f };
@@ -27,8 +30,11 @@ public:
     std::atomic<float> fltDecay       { 0.25f };
     std::atomic<float> fltSustain     { 0.2f };
     std::atomic<float> fltRelease     { 0.1f };
+    std::atomic<float> overloadAmount { 0.0f };
+    std::atomic<float> kbTrackAmount  { 0.0f };
 
     juce::MidiKeyboardState keyboardState;
+    Oscilloscope oscilloscope;
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -59,10 +65,38 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // Factory presets plus any patches saved this session via the "Save
+    // Current Patch" menu item
+    const std::vector<Preset>& getPresets() const { return presets; }
+    void saveCurrentPatchAsPreset (const juce::String& name);
+
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    // When 1-2 sync is on, collapse the incoming MIDI stream down to one
+    // note at a time, Little Phatty style, instead of letting every note
+    // ring on its own independently-synced voice
+    struct HeldNote { int note; juce::uint8 velocity; int channel; };
+    std::vector<HeldNote> monoNoteStack;
+    int monoCurrentNote = -1;
+    void applyMonoSyncVoicing (juce::MidiBuffer& midiMessages);
+
+    // Single free-running mod LFO, computed once per block and routed to
+    // whichever destination is selected (pitch, filter cutoff, or amp gain)
+    double lfoPhase      = 0.0;
+    float  lfoHeldRandom = 0.0f;
+    float  lastAmpGain   = 1.0f;
+
     juce::Synthesiser synth;
+    juce::dsp::NoiseGate<float> gate;
+    juce::dsp::LadderFilter<float> ladder;
+    juce::dsp::Chorus<float> chorus;
+    juce::dsp::Phaser<float> phaser;
+    juce::dsp::Reverb reverb;
+    juce::dsp::Compressor<float> comp;
+    juce::dsp::Limiter<float> limiter;
+    int currentProgram = 0;
+    std::vector<Preset> presets;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MySynthAudioProcessor)
 };
