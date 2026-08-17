@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "KnobLabelStyle.h"
 
 //==============================================================================
 // A rotary knob with a title label above it, attached to an APVTS parameter.
@@ -8,7 +9,10 @@
 //
 //     LabeledKnob pitchKnob { apvts, "pitch", "Pitch", &lookAndFeel };
 //
-// Customise the underlying slider through getSlider().
+// Customise the underlying slider through getSlider(). Call
+// setStatusOverride() to temporarily swap the title for a status word in a
+// given colour (e.g. "Off" in red); pass an empty string to restore the
+// original title.
 class LabeledKnob : public juce::Component
 {
 public:
@@ -16,7 +20,8 @@ public:
                  const juce::String& parameterID,
                  const juce::String& title,
                  juce::LookAndFeel* lookAndFeelToUse = nullptr)
-        : attachment (apvts, parameterID, slider)
+        : attachment (apvts, parameterID, slider),
+          defaultTitle (title)
     {
         if (lookAndFeelToUse != nullptr)
             slider.setLookAndFeel (lookAndFeelToUse);
@@ -27,7 +32,7 @@ public:
 
         label.setText (title, juce::dontSendNotification);
         label.setJustificationType (juce::Justification::centred);
-        label.setFont (juce::FontOptions (10.5f));
+        label.setFont (KnobLabelStyle::font());
         addAndMakeVisible (label);
     }
 
@@ -38,17 +43,32 @@ public:
 
     juce::Slider& getSlider()   { return slider; }
 
+    void setStatusOverride (const juce::String& text, juce::Colour colour = juce::Colours::red)
+    {
+        if (text.isNotEmpty())
+        {
+            label.setText (text, juce::dontSendNotification);
+            label.setColour (juce::Label::textColourId, colour);
+        }
+        else
+        {
+            label.setText (defaultTitle, juce::dontSendNotification);
+            label.removeColour (juce::Label::textColourId);
+        }
+    }
+
     void resized() override
     {
         auto b = getLocalBounds();
         label.setBounds  (b.getX() + 2,  b.getY() + 2,  b.getWidth() - 4, 18);
-        slider.setBounds (b.getX() + 10, b.getY() + 20, b.getWidth() - 20,
-                          b.getHeight() - 22);
+        slider.setBounds (b.getX() + 10, b.getY() + 22, b.getWidth() - 20,
+                          b.getHeight() - 24);
     }
 
 private:
     juce::Slider slider;
     juce::Label  label;
+    juce::String defaultTitle;
     juce::AudioProcessorValueTreeState::SliderAttachment attachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LabeledKnob)

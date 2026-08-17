@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "KnobLabelStyle.h"
 
 //==============================================================================
 // Sylenth1-style LCD effects screen: an effect list with enable checkboxes
@@ -250,7 +251,7 @@ private:
 
         knob.label.setText (title, juce::dontSendNotification);
         knob.label.setJustificationType (juce::Justification::centred);
-        knob.label.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+        knob.label.setFont (juce::FontOptions (KnobLabelStyle::fontSize, juce::Font::bold));
         knob.label.setColour (juce::Label::textColourId, ink);
         addAndMakeVisible (knob.label);
 

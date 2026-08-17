@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "BinaryData.h"
+#include "KnobLabelStyle.h"
 
 //==============================================================================
 // A vertical bank of four LEDs mimicking the Little Phatty octave switch.
@@ -29,9 +30,18 @@ public:
 
     void paint (juce::Graphics& g) override
     {
+        auto labelFont = KnobLabelStyle::font();
+
         g.setColour (juce::Colours::white);
-        g.setFont (juce::FontOptions (10.5f));
-        g.drawText (titleText, getLocalBounds().withTrimmedTop (2).withHeight (18),
+        g.setFont (labelFont);
+
+        // The LED + number rows below are left-packed (checkbox then digits),
+        // not spread across the component's full width, so centring the title
+        // over the whole component would push it right of that cluster.
+        // Centre it over the same left-packed width instead.
+        auto ledWidth = rowBounds (0).getHeight();
+        auto contentWidth = ledWidth + 2 + juce::GlyphArrangement::getStringWidthInt (juce::Font (labelFont), "16");
+        g.drawText (titleText, getLocalBounds().withTrimmedTop (2).withHeight (18).withWidth (contentWidth),
                     juce::Justification::centred);
 
         static const char* names[] = { "2", "4", "8", "16" };
@@ -45,7 +55,7 @@ public:
                 g.drawImage (img, led);
 
             g.setColour (juce::Colours::white);
-            g.setFont (juce::FontOptions (10.5f));
+            g.setFont (labelFont);
             g.drawText (names[row], r, juce::Justification::centredLeft);
         }
     }
@@ -55,7 +65,7 @@ private:
     // lines up with the knobs beside it
     juce::Rectangle<int> rowsArea() const
     {
-        return getLocalBounds().withTrimmedTop (20).withTrimmedBottom (2);
+        return getLocalBounds().withTrimmedTop (22).withTrimmedBottom (2);
     }
 
     juce::Rectangle<int> rowBounds (int row) const

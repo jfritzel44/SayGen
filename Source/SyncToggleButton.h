@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "BinaryData.h"
+#include "KnobLabelStyle.h"
 
 //==============================================================================
 // A push-to-toggle switch styled after the Little Phatty's OSC 2 SYNC button:
@@ -30,8 +31,8 @@ public:
     void paint (juce::Graphics& g) override
     {
         g.setColour (juce::Colours::white);
-        g.setFont (juce::FontOptions (10.5f));
-        g.drawText (titleText, getLocalBounds().withHeight (18),
+        g.setFont (KnobLabelStyle::font());
+        g.drawText (titleText, getLocalBounds().withTrimmedTop (2).withHeight (18),
                     juce::Justification::centred);
 
         const auto& img = on ? onImage : offImage;
@@ -41,7 +42,7 @@ public:
             // visible button size now, unlike the padded source artwork.
             // 10% larger than the original 24px icon.
             constexpr float iconSize = 24.0f * 1.10f;
-            auto iconArea = getLocalBounds().withTrimmedTop (20);
+            auto iconArea = getLocalBounds().withTrimmedTop (22);
             auto iconRect = juce::Rectangle<float> (iconSize, iconSize)
                                 .withCentre (iconArea.getCentre().toFloat());
             g.drawImage (img, iconRect, juce::RectanglePlacement::centred);

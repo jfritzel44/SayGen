@@ -238,6 +238,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
         "limitRelease", "Limiter Release",
         juce::NormalisableRange<float> (1.0f, 500.0f, 1.0f, 0.5f), 100.0f));
 
+    // Final output gain stage, applied after every effect and independent
+    // of the amp envelope — a straightforward "how loud does this patch
+    // come out" control rather than part of the voice itself
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "masterVolume", "Master Volume",
+        juce::NormalisableRange<float> (-60.0f, 6.0f, 0.1f), 0.0f));
+
     return layout;
 }
 
@@ -576,7 +583,13 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         limiter.process (juce::dsp::ProcessContextReplacing<float> (block));
     }
 
+    // Final output gain stage: independent of the amp envelope, applied
+    // after every effect so it's the true last thing to touch the signal
+    const float masterVolumeDb = apvts.getRawParameterValue ("masterVolume")->load();
+    buffer.applyGain (juce::Decibels::decibelsToGain (masterVolumeDb, -60.0f));
+
     oscilloscope.pushBuffer (buffer);
+    outputMeter.pushBuffer (buffer);
 }
 
 //==============================================================================

@@ -1,11 +1,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-static juce::String oscTypeName (double val)
-{
-    static const char* names[] = { "Sine", "Sawtooth", "Square", "Triangle" };
-    return names[juce::jlimit (0, 3, (int)std::round (val))];
-}
+static const juce::Colour panelColour        (0xff3a3a3a);
+static const juce::Colour panelOutlineColour (0xff888888);
 
 static juce::String osc2TypeName (double val)
 {
@@ -13,13 +10,16 @@ static juce::String osc2TypeName (double val)
     return names[juce::jlimit (0, 4, (int)std::round (val))];
 }
 
-MySynthAudioProcessorEditor::MySynthAudioProcessorEditor (MySynthAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p),
+//==============================================================================
+MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
+    : audioProcessor (p),
       qwertyKeyboard (p.keyboardState),
       lcdScreen (p.apvts),
       oscilloscope (p.oscilloscope),
-      oscTypeKnob  (p.apvts, "oscType",  "Osc 1", &oscLookAndFeel),
-      osc2TypeKnob (p.apvts, "osc2Type", "Osc 2",  &oscLookAndFeel),
+      outputMeter (p.outputMeter),
+      masterVolumeKnob (p.apvts, "masterVolume", "Master", &oscLookAndFeel),
+      oscTypeKnob  (p.apvts, "oscType",  "Osc 1", &oscWaveformLookAndFeel),
+      osc2TypeKnob (p.apvts, "osc2Type", "Osc 2",  &oscWaveformLookAndFeel),
       osc1OctaveSelector (p.apvts, "osc1Octave", "Octave"),
       osc2OctaveSelector (p.apvts, "osc2Octave", "Octave"),
       oscSyncButton (p.apvts, "oscSync", "1-2 Sync"),
@@ -41,16 +41,19 @@ MySynthAudioProcessorEditor::MySynthAudioProcessorEditor (MySynthAudioProcessor&
       lfoRateKnob    (p.apvts, "lfoRate",    "LFO Rate", &oscLookAndFeel),
       lfoAmountKnob  (p.apvts, "lfoAmount",  "Amount",   &oscLookAndFeel)
 {
+    sectionTitleTypeface = juce::Typeface::createSystemTypefaceFor (
+        BinaryData::EurostileExtendedBlack_ttf, BinaryData::EurostileExtendedBlack_ttfSize);
+
     logoImage = juce::ImageCache::getFromMemory (BinaryData::logo_png,
                                                  BinaryData::logo_pngSize);
 
-    setSize (1040, 642);
     startTimerHz (30);
     qwertyKeyboard.attachTo (*this);
 
     presetBox.setTextWhenNothingSelected ("Presets");
-    presetBox.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff3a3a3a));
-    presetBox.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff888888));
+    presetBox.setLookAndFeel (&comboBoxLookAndFeel);
+    presetBox.setColour (juce::ComboBox::backgroundColourId, panelColour);
+    presetBox.setColour (juce::ComboBox::outlineColourId,    panelOutlineColour);
     presetBox.setColour (juce::ComboBox::textColourId,       juce::Colours::white);
     presetBox.setColour (juce::ComboBox::arrowColourId,      juce::Colours::white);
     rebuildPresetMenu();
@@ -74,11 +77,27 @@ MySynthAudioProcessorEditor::MySynthAudioProcessorEditor (MySynthAudioProcessor&
     addAndMakeVisible (presetBox);
     addAndMakeVisible (lcdScreen);
     addAndMakeVisible (oscilloscope);
+    addAndMakeVisible (outputMeter);
 
-    oscTypeKnob.getSlider().textFromValueFunction = oscTypeName;
+    masterVolumeKnob.getSlider().setTextValueSuffix (" dB");
+    addAndMakeVisible (masterVolumeKnob);
+
     addAndMakeVisible (oscTypeKnob);
 
     osc2TypeKnob.getSlider().textFromValueFunction = osc2TypeName;
+    osc2TypeKnob.getSlider().onValueChange = [this]
+    {
+        auto value = osc2TypeKnob.getSlider().getValue();
+        auto isOff = value < 0.5;
+        if (! isOff)
+            osc2LastNonOffValue = value;
+        osc2TypeKnob.setStatusOverride (isOff ? "Off" : "", juce::Colour (0xffe0524f));
+    };
+    osc2TypeKnob.getSlider().onValueChange();
+    // Clicking (rather than dragging) the knob toggles it straight to Off,
+    // or back to whatever waveform it last had, without needing to drag
+    // all the way around to 0.
+    osc2TypeKnob.getSlider().addMouseListener (this, false);
     addAndMakeVisible (osc2TypeKnob);
 
     addAndMakeVisible (osc1OctaveSelector);
@@ -129,10 +148,11 @@ MySynthAudioProcessorEditor::MySynthAudioProcessorEditor (MySynthAudioProcessor&
     addAndMakeVisible (lfoRateKnob);
     addAndMakeVisible (lfoAmountKnob);
 
-    auto styleComboBox = [] (juce::ComboBox& box)
+    auto styleComboBox = [this] (juce::ComboBox& box)
     {
-        box.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff3a3a3a));
-        box.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff888888));
+        box.setLookAndFeel (&comboBoxLookAndFeel);
+        box.setColour (juce::ComboBox::backgroundColourId, panelColour);
+        box.setColour (juce::ComboBox::outlineColourId,    panelOutlineColour);
         box.setColour (juce::ComboBox::textColourId,       juce::Colours::white);
         box.setColour (juce::ComboBox::arrowColourId,      juce::Colours::white);
     };
@@ -150,12 +170,16 @@ MySynthAudioProcessorEditor::MySynthAudioProcessorEditor (MySynthAudioProcessor&
     addAndMakeVisible (lfoDestBox);
 }
 
-MySynthAudioProcessorEditor::~MySynthAudioProcessorEditor()
+MySynthAudioProcessorEditor::Content::~Content()
 {
     stopTimer();
+
+    presetBox.setLookAndFeel (nullptr);
+    lfoSourceBox.setLookAndFeel (nullptr);
+    lfoDestBox.setLookAndFeel (nullptr);
 }
 
-void MySynthAudioProcessorEditor::rebuildPresetMenu()
+void MySynthAudioProcessorEditor::Content::rebuildPresetMenu()
 {
     presetBox.clear (juce::dontSendNotification);
     presetBox.addItem ("Save Current Patch", saveCurrentPatchItemId);
@@ -166,7 +190,7 @@ void MySynthAudioProcessorEditor::rebuildPresetMenu()
         presetBox.addItem (preset.name, itemId++);
 }
 
-void MySynthAudioProcessorEditor::showSavePatchDialog()
+void MySynthAudioProcessorEditor::Content::showSavePatchDialog()
 {
     auto* aw = new juce::AlertWindow ("Save Current Patch",
                                       "Enter a name for this patch:",
@@ -192,7 +216,31 @@ void MySynthAudioProcessorEditor::showSavePatchDialog()
     }), true);
 }
 
-void MySynthAudioProcessorEditor::timerCallback()
+void MySynthAudioProcessorEditor::Content::mouseDown (const juce::MouseEvent& e)
+{
+    if (e.eventComponent == &osc2TypeKnob.getSlider())
+        osc2ValueOnMouseDown = osc2TypeKnob.getSlider().getValue();
+}
+
+void MySynthAudioProcessorEditor::Content::mouseUp (const juce::MouseEvent& e)
+{
+    if (e.eventComponent != &osc2TypeKnob.getSlider())
+        return;
+
+    auto& slider = osc2TypeKnob.getSlider();
+
+    // Only toggle if the drag (if any) didn't actually land on a different
+    // waveform - comparing values rather than trusting JUCE's own drag
+    // detection, since that alone wasn't reliably telling a plain click from
+    // a drag here.
+    if (slider.getValue() != osc2ValueOnMouseDown)
+        return;
+
+    auto isOff = slider.getValue() < 0.5;
+    slider.setValue (isOff ? osc2LastNonOffValue : 0.0, juce::sendNotificationSync);
+}
+
+void MySynthAudioProcessorEditor::Content::timerCallback()
 {
     // Give the qwerty keyboard focus once we're on screen
     if (! hasGrabbedFocus && isShowing())
@@ -205,7 +253,7 @@ void MySynthAudioProcessorEditor::timerCallback()
     repaint();
 }
 
-void MySynthAudioProcessorEditor::paint (juce::Graphics& g)
+void MySynthAudioProcessorEditor::Content::paint (juce::Graphics& g)
 {
     g.fillAll (juce::Colour (0xff2b2b2b));
 
@@ -235,28 +283,54 @@ void MySynthAudioProcessorEditor::paint (juce::Graphics& g)
     g.setFont (juce::FontOptions (13.0f));
     g.drawText ("Select Preset", 342, 100, 110, 26, juce::Justification::centredLeft);
 
-    auto drawSection = [&g] (juce::Rectangle<float> box, const juce::String& title)
+    auto drawSection = [&g, this] (juce::Rectangle<float> box, const juce::String& title)
     {
-        g.setColour (juce::Colour (0xff3a3a3a));
+        g.setColour (panelColour);
         g.fillRoundedRectangle (box, 10.0f);
-        g.setColour (juce::Colour (0xff888888));
+        g.setColour (panelOutlineColour);
         g.drawRoundedRectangle (box, 10.0f, 1.0f);
         g.setColour (juce::Colours::white);
-        g.setFont (juce::FontOptions (13.2f));
-        // Shrink the centring box so the text sits nearer the top, leaving
-        // ~5px more breathing room below it before the knobs start.
-        g.drawText (title, box.withHeight (18.0f).toNearestInt(),
+        // Sentence case: only the very first character capitalised, not
+        // every word (so "Filter Mod" reads as "Filter mod").
+        auto displayTitle = title.toLowerCase();
+        if (displayTitle.isNotEmpty())
+            displayTitle = displayTitle.substring (0, 1).toUpperCase() + displayTitle.substring (1);
+
+        // The wider/bolder Eurostile face doesn't fit every title at one
+        // fixed size within its panel's width (e.g. "Modulation" vs the
+        // narrower "Filter Mod" panel), so shrink just enough to fit rather
+        // than guessing a single size small enough for the longest title.
+        float titleSize = 10.5f;
+        // Very slight horizontal squeeze on the section titles, purely
+        // cosmetic (the fit-shrinking loop below is unrelated).
+        constexpr float titleHorizontalScale = 0.95f;
+        auto titleFont = juce::FontOptions (titleSize).withTypeface (sectionTitleTypeface)
+                                                        .withHorizontalScale (titleHorizontalScale);
+        while (titleSize > 7.0f
+               && juce::GlyphArrangement::getStringWidthInt (juce::Font (titleFont), displayTitle) > box.getWidth() - 8.0f)
+        {
+            titleSize -= 0.5f;
+            titleFont = juce::FontOptions (titleSize).withTypeface (sectionTitleTypeface)
+                                                       .withHorizontalScale (titleHorizontalScale);
+        }
+
+        g.setFont (titleFont);
+        // Padding above the text before it starts, then shrink the centring
+        // box so it sits nearer the top, leaving breathing room below it
+        // before the knobs start.
+        g.drawText (displayTitle, box.withTrimmedTop (6.0f).withHeight (18.0f).toNearestInt(),
                     juce::Justification::centred);
     };
 
     drawSection ({ 150.0f, 286.0f, 620.0f, 124.0f }, "Oscillators");
     drawSection ({ 20.0f, 286.0f, 120.0f, 342.0f }, "Filter Mod");
+    drawSection ({ 780.0f, 286.0f, 110.0f, 124.0f }, "Master");
     drawSection ({ 150.0f, 418.0f, 460.0f, 210.0f }, "Filter");
-    drawSection ({ 630.0f, 418.0f, 260.0f, 210.0f }, "Amp");
+    drawSection ({ 620.0f, 418.0f, 270.0f, 210.0f }, "Amp");
     drawSection ({ 900.0f, 286.0f, 120.0f, 342.0f }, "Modulation");
 }
 
-void MySynthAudioProcessorEditor::resized()
+void MySynthAudioProcessorEditor::Content::resized()
 {
     // Preset menu sits below the logo/scope row, to the right of its label
     presetBox.setBounds (460, 100, 238, 26);
@@ -269,15 +343,27 @@ void MySynthAudioProcessorEditor::resized()
     oscilloscope.setBounds (462, 48, 236, 44);
 
     // Oscillators section: each osc knob gets its octave LED bank beside it,
-    // then the 1-2 sync toggle, then detune and pitch, all on one row
-    juce::Rectangle<int> oscRow (158, 310, 604, 88);
-    oscTypeKnob.setBounds        (oscRow.removeFromLeft (110));
+    // then the 1-2 sync toggle, then detune and pitch, all on one row. The
+    // row sits at y=302 so every title label lines up horizontally; Osc 1
+    // and Osc 2's waveform artwork is height-bound within its own box, so
+    // those two get extra height (growing downward, past the rest of the
+    // row) to render larger without disturbing their neighbours' label
+    // position. This now reaches the top/bottom slack available inside the
+    // "Oscillators" panel outline; growing further needs a taller panel.
+    juce::Rectangle<int> oscRow (158, 302, 604, 88);
+    oscTypeKnob.setBounds        (oscRow.removeFromLeft (110).withWidth (104).withHeight (104));
     osc1OctaveSelector.setBounds (oscRow.removeFromLeft (64));
-    osc2TypeKnob.setBounds       (oscRow.removeFromLeft (110));
-    osc2OctaveSelector.setBounds (oscRow.removeFromLeft (64));
+    osc2TypeKnob.setBounds       (oscRow.removeFromLeft (110).withWidth (104).withHeight (104).translated (-10, 0));
+    osc2OctaveSelector.setBounds (oscRow.removeFromLeft (64).translated (-10, 0));
     oscSyncButton.setBounds      (oscRow.removeFromLeft (56));
     detuneKnob.setBounds         (oscRow.removeFromLeft (100));
     pitchKnob.setBounds          (oscRow.removeFromLeft (100));
+
+    // Master panel: volume knob plus a peak meter reading the true final
+    // output (post master gain), sitting above Amp between Oscillators
+    // and Modulation
+    masterVolumeKnob.setBounds (790, 310, 70, 88);
+    outputMeter.setBounds      (865, 310, 15, 88);
 
     // Filter Mod panel left of the filter: Overload, EGR (envelope) amount,
     // and keyboard tracking amount stacked in their own column. It runs
@@ -299,9 +385,9 @@ void MySynthAudioProcessorEditor::resized()
     fltReleaseKnob.setBounds (filterEnvRow);
 
     // Amp section: ADSR in a 2x2 grid
-    attackKnob.setBounds  (660, 442, 100, 88);
+    attackKnob.setBounds  (650, 442, 100, 88);
     decayKnob.setBounds   (760, 442, 100, 88);
-    sustainKnob.setBounds (660, 532, 100, 88);
+    sustainKnob.setBounds (650, 532, 100, 88);
     releaseKnob.setBounds (760, 532, 100, 88);
 
     // Modulation section: mirrors Filter Mod's tall single column on the
@@ -312,4 +398,28 @@ void MySynthAudioProcessorEditor::resized()
     lfoSourceBox.setBounds  (910, 424, 100, 26);
     lfoAmountKnob.setBounds (910, 460, 100, 88);
     lfoDestBox.setBounds    (910, 558, 100, 26);
+}
+
+//==============================================================================
+MySynthAudioProcessorEditor::MySynthAudioProcessorEditor (MySynthAudioProcessor& p)
+    : AudioProcessorEditor (&p), content (p)
+{
+    addAndMakeVisible (content);
+
+    setResizable (true, true);
+    setResizeLimits (designWidth / 2, designHeight / 2, designWidth * 3, designHeight * 3);
+    getConstrainer()->setFixedAspectRatio ((double) designWidth / (double) designHeight);
+
+    setSize (designWidth, designHeight);
+}
+
+MySynthAudioProcessorEditor::~MySynthAudioProcessorEditor()
+{
+}
+
+void MySynthAudioProcessorEditor::resized()
+{
+    auto scale = (float) getWidth() / (float) designWidth;
+    content.setTransform (juce::AffineTransform::scale (scale));
+    content.setBounds (0, 0, designWidth, designHeight);
 }

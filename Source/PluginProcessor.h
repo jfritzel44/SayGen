@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "Oscillator/Oscillator.h"
 #include "Oscilloscope.h"
+#include "OutputMeter.h"
 #include "Presets.h"
 
 //==============================================================================
@@ -35,6 +36,7 @@ public:
 
     juce::MidiKeyboardState keyboardState;
     Oscilloscope oscilloscope;
+    OutputMeter outputMeter;
 
     juce::AudioProcessorValueTreeState apvts;
 

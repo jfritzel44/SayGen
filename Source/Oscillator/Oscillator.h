@@ -211,6 +211,24 @@ private:
         return 0.0;
     }
 
+    // Smooths a slope discontinuity (a corner, rather than a jump) the same
+    // way: this is polyBlep's antiderivative, scaled by dt on use so its
+    // corrected triangle's derivative matches the polyBlep-corrected square.
+    static double polyBlamp (double t, double dt)
+    {
+        if (t < dt)
+        {
+            auto x = t / dt - 1.0;
+            return -1.0 / 3.0 * x * x * x;
+        }
+        if (t > 1.0 - dt)
+        {
+            auto x = (t - 1.0) / dt + 1.0;
+            return 1.0 / 3.0 * x * x * x;
+        }
+        return 0.0;
+    }
+
     static double waveSample (int type, double t, double dt)
     {
         switch (type)
@@ -219,9 +237,11 @@ private:
             case 2:  return (t < 0.5 ? 1.0 : -1.0)                 // Square
                         + polyBlep (t, dt)
                         - polyBlep (std::fmod (t + 0.5, 1.0), dt);
-            case 3:  return t < 0.5                                // Triangle
+            case 3:  return (t < 0.5                               // Triangle
                         ? (4.0 * t - 1.0)
-                        : (3.0 - 4.0 * t);
+                        : (3.0 - 4.0 * t))
+                        + 4.0 * dt * (polyBlamp (t, dt)
+                                     - polyBlamp (std::fmod (t + 0.5, 1.0), dt));
             default: return std::sin (t * juce::MathConstants<double>::twoPi);
         }
     }

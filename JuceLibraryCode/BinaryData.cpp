@@ -45786,6 +45786,12 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
         case 0x78ded995:  numBytes = 130012; return logo_png;
         case 0x88c08314:  numBytes = 2175185; return toggle_on_png;
         case 0x82040d6e:  numBytes = 2154322; return toggle_off_png;
+        case 0x22186bc5:  numBytes = 546331; return osc_up_png;
+        case 0x0ba3d64c:  numBytes = 552902; return osc_down_png;
+        case 0x1d011731:  numBytes = 556805; return osc_left_png;
+        case 0xbdcd6c46:  numBytes = 555084; return osc_right_png;
+        case 0x819e4c19:  numBytes = 32692; return EurostileExtendedBlack_ttf;
+        case 0x385de662:  numBytes = 97960; return BarlowCondensedMedium_ttf;
         default: break;
     }
 
@@ -45800,7 +45806,13 @@ const char* namedResourceList[] =
     "led_on_png",
     "logo_png",
     "toggle_on_png",
-    "toggle_off_png"
+    "toggle_off_png",
+    "osc_up_png",
+    "osc_down_png",
+    "osc_left_png",
+    "osc_right_png",
+    "EurostileExtendedBlack_ttf",
+    "BarlowCondensedMedium_ttf"
 };
 
 const char* originalFilenames[] =
@@ -45810,7 +45822,13 @@ const char* originalFilenames[] =
     "led_on.png",
     "logo.png",
     "toggle_on.png",
-    "toggle_off.png"
+    "toggle_off.png",
+    "osc_up.png",
+    "osc_down.png",
+    "osc_left.png",
+    "osc_right.png",
+    "EurostileExtendedBlack.ttf",
+    "BarlowCondensed-Medium.ttf"
 };
 
 const char* getNamedResourceOriginalFilename (const char* resourceNameUTF8);

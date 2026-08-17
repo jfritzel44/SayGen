@@ -17,6 +17,8 @@
       <FILE id="laf001" name="OscKnobLookAndFeel.h" compile="0" resource="0"
             file="Source/OscKnobLookAndFeel.h"/>
       <FILE id="lkn001" name="LabeledKnob.h" compile="0" resource="0" file="Source/LabeledKnob.h"/>
+      <FILE id="kls001" name="KnobLabelStyle.h" compile="0" resource="0"
+            file="Source/KnobLabelStyle.h"/>
       <FILE id="los001" name="LedOctaveSelector.h" compile="0" resource="0"
             file="Source/LedOctaveSelector.h"/>
       <FILE id="qwk001" name="QwertyMidiKeyboard.h" compile="0" resource="0"
@@ -36,6 +38,14 @@
         <FILE id="img004" name="logo.png" compile="0" resource="1" file="Source/assets/logo.png"/>
         <FILE id="img005" name="toggle_on.png" compile="0" resource="1" file="Source/assets/toggle_on.png"/>
         <FILE id="img006" name="toggle_off.png" compile="0" resource="1" file="Source/assets/toggle_off.png"/>
+        <FILE id="img015" name="osc_up.png" compile="0" resource="1" file="Source/assets/osc_up.png"/>
+        <FILE id="img016" name="osc_down.png" compile="0" resource="1" file="Source/assets/osc_down.png"/>
+        <FILE id="img017" name="osc_left.png" compile="0" resource="1" file="Source/assets/osc_left.png"/>
+        <FILE id="img018" name="osc_right.png" compile="0" resource="1" file="Source/assets/osc_right.png"/>
+        <FILE id="fnt001" name="EurostileExtendedBlack.ttf" compile="0" resource="1"
+              file="Source/assets/EurostileExtendedBlack.ttf"/>
+        <FILE id="fnt002" name="BarlowCondensed-Medium.ttf" compile="0" resource="1"
+              file="Source/assets/BarlowCondensed-Medium.ttf"/>
       </GROUP>
     </GROUP>
   </MAINGROUP>

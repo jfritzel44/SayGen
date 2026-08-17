@@ -26,8 +26,26 @@ namespace BinaryData
     extern const char*   toggle_off_png;
     const int            toggle_off_pngSize = 2154322;
 
+    extern const char*   osc_up_png;
+    const int            osc_up_pngSize = 546331;
+
+    extern const char*   osc_down_png;
+    const int            osc_down_pngSize = 552902;
+
+    extern const char*   osc_left_png;
+    const int            osc_left_pngSize = 556805;
+
+    extern const char*   osc_right_png;
+    const int            osc_right_pngSize = 555084;
+
+    extern const char*   EurostileExtendedBlack_ttf;
+    const int            EurostileExtendedBlack_ttfSize = 32692;
+
+    extern const char*   BarlowCondensedMedium_ttf;
+    const int            BarlowCondensedMedium_ttfSize = 97960;
+
     // Number of elements in the namedResourceList and originalFileNames arrays.
-    const int namedResourceListSize = 6;
+    const int namedResourceListSize = 12;
 
     // Points to the start of a list of resource names.
     extern const char* namedResourceList[];
