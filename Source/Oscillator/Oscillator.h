@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "../VelocityCurve.h"
 
 struct MySynthSound : public juce::SynthesiserSound
 {
@@ -30,6 +31,8 @@ struct MySynthVoice : public juce::SynthesiserVoice
     std::atomic<float>* fltRelease     = nullptr;
     std::atomic<float>* overloadAmount = nullptr;  // pre-filter drive, Little Phatty "Overload" style
     std::atomic<float>* kbTrackAmount  = nullptr;  // filter keyboard tracking, 0 = none, 1 = 1:1 with pitch
+    std::atomic<float>* velocityCurve  = nullptr;  // 0 = linear, + boosts soft notes, - suppresses them
+    std::atomic<float>* pitchBend      = nullptr;  // current pitch-wheel offset, in semitones
 
     bool canPlaySound (juce::SynthesiserSound* s) override
     {
@@ -40,9 +43,19 @@ struct MySynthVoice : public juce::SynthesiserVoice
                     juce::SynthesiserSound*, int) override
     {
         frequency = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
-        amplitude = velocity;
+        amplitude = shapeVelocity (velocity, velocityCurve ? velocityCurve->load() : 0.0f);
         phase  = 0.0;
-        phase2 = 0.0;
+
+        // Osc 2 starts a quarter-cycle ahead of osc 1's phase=0 edge instead
+        // of locking to it. Two sawtooths (or squares) both restarting at
+        // their discontinuity on the same sample reinforce each other into a
+        // much sharper combined edge right at the attack, heard as an extra
+        // click that isn't there once they've drifted apart. A fixed offset
+        // (rather than a random one) avoids that without making each note's
+        // timbre inconsistent. Hard sync forces its own phase relationship on
+        // the first osc 1 wrap anyway, so it's exempt.
+        const bool synced = oscSync && oscSync->load();
+        phase2 = synced ? 0.0 : 0.25 * juce::MathConstants<double>::twoPi;
         syncDeclick = 0.0;
 
         // Per-voice analog-style drift: each note lands a hair off pitch
@@ -63,9 +76,15 @@ struct MySynthVoice : public juce::SynthesiserVoice
                                    fltRelease ? fltRelease->load() : 0.1f });
         filterEnv.noteOn();
 
-        filter.prepare ({ getSampleRate(), 512, 1 });
-        filter.setType (juce::dsp::StateVariableTPTFilter<float>::Type::lowpass);
-        filter.reset();
+        // Two 2-pole stages in series make a 4-pole/24dB-per-octave lowpass
+        // instead of one stage's gentler 12dB/octave, so content above
+        // cutoff is cut much harder
+        for (auto& f : filter)
+        {
+            f.prepare ({ getSampleRate(), 512, 1 });
+            f.setType (juce::dsp::StateVariableTPTFilter<float>::Type::lowpass);
+            f.reset();
+        }
 
         active = true;
     }
@@ -93,7 +112,8 @@ struct MySynthVoice : public juce::SynthesiserVoice
 
         const double twoPi = juce::MathConstants<double>::twoPi;
 
-        const double semitones  = pitchSemitones ? (double) pitchSemitones->load() : 0.0;
+        const double semitones  = (pitchSemitones ? (double) pitchSemitones->load() : 0.0)
+                                 + (pitchBend       ? (double) pitchBend->load()       : 0.0);
         const double multiplier = std::pow (2.0, semitones / 12.0);
         const auto baseDelta = twoPi * frequency * multiplier * drift / getSampleRate();
 
@@ -111,7 +131,15 @@ struct MySynthVoice : public juce::SynthesiserVoice
                                                cutoffHz ? cutoffHz->load() : 20000.0f);
         const float envOctaves = envAmountOct ? envAmountOct->load() : 0.0f;
 
-        filter.setResonance (resonanceQ ? resonanceQ->load() : 0.707f);
+        // Two cascaded stages at the same Q multiply their resonant peaks
+        // together rather than adding, so feeding the raw knob value to both
+        // would make the filter ring/self-oscillate far earlier than the
+        // 0.5-10 range implies. Taking the square root of the knob value per
+        // stage keeps the combined peak in line with what a single stage at
+        // that Q would have done.
+        const float perStageQ = std::sqrt (resonanceQ ? resonanceQ->load() : 0.707f);
+        for (auto& f : filter)
+            f.setResonance (perStageQ);
 
         // Keyboard tracking: shift the cutoff by the note's distance (in
         // octaves) from middle C, scaled by the tracking amount
@@ -146,13 +174,16 @@ struct MySynthVoice : public juce::SynthesiserVoice
 
             // Filter env sweeps the cutoff up/down by envOctaves at full
             // swing, on top of the fixed keyboard-tracking offset
-            filter.setCutoffFrequency (juce::jlimit (20.0f, maxCutoff,
-                baseCutoff * (float) std::exp2 (envOctaves * filterEnv.getNextSample() + kbOctaves)));
+            const float modulatedCutoff = juce::jlimit (20.0f, maxCutoff,
+                baseCutoff * (float) std::exp2 (envOctaves * filterEnv.getNextSample() + kbOctaves));
+            for (auto& f : filter)
+                f.setCutoffFrequency (modulatedCutoff);
 
             auto out = (float)(sample * amplitude * 0.3) * adsr.getNextSample();
             out = std::tanh (out * drive) * driveNorm;  // Overload, pre-filter
-            out = filter.processSample (0, out);
-            out = std::tanh (1.5f * out) / 1.5f;  // gentle analog-style rounding
+            out = std::tanh (1.5f * out) / 1.5f;  // gentle analog-style rounding, also pre-filter
+            out = filter[0].processSample (0, out);  // two stages in series run last,
+            out = filter[1].processSample (0, out);  // so cutoff has the final say
             for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
                 buffer.addSample (ch, i, out);
 
@@ -190,6 +221,8 @@ struct MySynthVoice : public juce::SynthesiserVoice
         }
     }
 
+    // Pitch bend is read from the shared pitchBend atomic in renderNextBlock
+    // instead (see PluginProcessor::processBlock), so this stays a no-op
     void pitchWheelMoved (int) override {}
     void controllerMoved (int, int) override {}
 
@@ -248,7 +281,7 @@ private:
 
     juce::ADSR adsr;
     juce::ADSR filterEnv;
-    juce::dsp::StateVariableTPTFilter<float> filter;
+    juce::dsp::StateVariableTPTFilter<float> filter[2];
     double frequency = 440.0;
     double amplitude = 0.0;
     double phase     = 0.0;

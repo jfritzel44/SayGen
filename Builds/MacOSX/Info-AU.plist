@@ -8,11 +8,11 @@
     <key>CFBundleIconFile</key>
     <string></string>
     <key>CFBundleIdentifier</key>
-    <string>com.yourcompany.MySynth</string>
+    <string>com.yourcompany.SynGen1</string>
     <key>CFBundleName</key>
-    <string>MySynth</string>
+    <string>SynGen1</string>
     <key>CFBundleDisplayName</key>
-    <string>MySynth</string>
+    <string>SynGen1</string>
     <key>CFBundlePackageType</key>
     <string>BNDL</string>
     <key>CFBundleSignature</key>
@@ -29,11 +29,11 @@
     <array>
       <dict>
         <key>name</key>
-        <string>yourcompany: MySynth</string>
+        <string>yourcompany: SynGen1</string>
         <key>description</key>
-        <string>MySynth</string>
+        <string>SynGen1</string>
         <key>factoryFunction</key>
-        <string>MySynthAUFactory</string>
+        <string>SynGen1AUFactory</string>
         <key>manufacturer</key>
         <string>Manu</string>
         <key>type</key>

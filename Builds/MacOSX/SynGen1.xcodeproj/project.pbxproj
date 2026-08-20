@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXAggregateTarget section */
-		64202B46AC7BC2BC55ECD7EE /* MySynth - All */ = {
+		64202B46AC7BC2BC55ECD7EE /* SynGen1 - All */ = {
 			isa = PBXAggregateTarget;
 			buildConfigurationList = 339DC8A54EA09948249A8578;
 			buildPhases = (
@@ -19,8 +19,8 @@
 				703583040537D647AC4ADB67,
 				8BFCE2C0255F7FE9CB334045,
 			);
-			name = "MySynth - All";
-			productName = MySynth;
+			name = "SynGen1 - All";
+			productName = SynGen1;
 		};
 /* End PBXAggregateTarget section */
 
@@ -95,7 +95,7 @@
 		0DF1E556706C940BEF03F6C5 /* Presets.h */ /* Presets.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Presets.h; path = ../../Source/Presets.h; sourceTree = SOURCE_ROOT; };
 		0EF401613BD1053ABE5D8602 /* osc_right.png */ /* osc_right.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = osc_right.png; path = ../../Source/assets/osc_right.png; sourceTree = SOURCE_ROOT; };
 		1DDB9030575891B12ED1BDB6 /* MetalKit.framework */ /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
-		1EBF09ADB41C8A89606E9B5B /* AU */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MySynth.component; sourceTree = BUILT_PRODUCTS_DIR; };
+		1EBF09ADB41C8A89606E9B5B /* AU */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SynGen1.component; sourceTree = BUILT_PRODUCTS_DIR; };
 		21128D9A28E4D96EA76A7743 /* include_juce_core.mm */ /* include_juce_core.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_core.mm; path = ../../JuceLibraryCode/include_juce_core.mm; sourceTree = SOURCE_ROOT; };
 		239314E7BCE812247FF3AE85 /* include_juce_audio_processors.mm */ /* include_juce_audio_processors.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_processors.mm; path = ../../JuceLibraryCode/include_juce_audio_processors.mm; sourceTree = SOURCE_ROOT; };
 		26C36FFACD10C1BD36676164 /* BinaryData.h */ /* BinaryData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BinaryData.h; path = ../../JuceLibraryCode/BinaryData.h; sourceTree = SOURCE_ROOT; };
@@ -117,10 +117,10 @@
 		49CDDC973686BC713C80C372 /* CoreAudioKit.framework */ /* CoreAudioKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudioKit.framework; path = System/Library/Frameworks/CoreAudioKit.framework; sourceTree = SDKROOT; };
 		4BFBB822CDFD73BA9276161F /* Oscillator.h */ /* Oscillator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Oscillator.h; path = ../../Source/Oscillator/Oscillator.h; sourceTree = SOURCE_ROOT; };
 		4DF8D429E7A215D99A1BF30A /* led_off.png */ /* led_off.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = led_off.png; path = ../../Source/assets/led_off.png; sourceTree = SOURCE_ROOT; };
-		526CDC4E2ACCB27505947BC7 /* VST3 */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MySynth.vst3; sourceTree = BUILT_PRODUCTS_DIR; };
-		57924354A1681A32F6AFB2C8 /* Standalone Plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MySynth.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		526CDC4E2ACCB27505947BC7 /* VST3 */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SynGen1.vst3; sourceTree = BUILT_PRODUCTS_DIR; };
+		57924354A1681A32F6AFB2C8 /* Standalone Plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SynGen1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		584B886B518C472FB94B1440 /* Cocoa.framework */ /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
-		5AF7F1272BE557ADB6096BD7 /* Shared Code */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMySynth.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		5AF7F1272BE557ADB6096BD7 /* Shared Code */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSynGen1.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		5BF8E896C9539792DB187940 /* include_juce_audio_plugin_client_AU_1.mm */ /* include_juce_audio_plugin_client_AU_1.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_plugin_client_AU_1.mm; path = ../../JuceLibraryCode/include_juce_audio_plugin_client_AU_1.mm; sourceTree = SOURCE_ROOT; };
 		5C1607568E07370187A9684A /* BarlowCondensed-Medium.ttf */ /* BarlowCondensed-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file.ttf; name = "BarlowCondensed-Medium.ttf"; path = "../../Source/assets/BarlowCondensed-Medium.ttf"; sourceTree = SOURCE_ROOT; };
 		5CF2A7A52B5D1373BA0C1235 /* WebKit.framework */ /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
@@ -441,18 +441,18 @@
 			name = Source;
 			sourceTree = "<group>";
 		};
-		FF7001E47E91281765F36567 /* MySynth */ = {
+		FF7001E47E91281765F36567 /* SynGen1 */ = {
 			isa = PBXGroup;
 			children = (
 				FBCBD9AFC3C5A6B2608E2076,
 			);
-			name = MySynth;
+			name = SynGen1;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		6FF204DC4878DE573C818F48 /* MySynth - VST3 Manifest Helper */ = {
+		6FF204DC4878DE573C818F48 /* SynGen1 - VST3 Manifest Helper */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C420C3911857195747B030F1;
 			buildPhases = (
@@ -464,12 +464,12 @@
 			);
 			dependencies = (
 			);
-			name = "MySynth - VST3 Manifest Helper";
-			productName = MySynth;
+			name = "SynGen1 - VST3 Manifest Helper";
+			productName = SynGen1;
 			productReference = 09649A591DB63F2FB310BCF1;
 			productType = "com.apple.product-type.tool";
 		};
-		77EF91D15523EEB15971FA9D /* MySynth - Shared Code */ = {
+		77EF91D15523EEB15971FA9D /* SynGen1 - Shared Code */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B01C1428362C0E1FAE87DD76;
 			buildPhases = (
@@ -479,12 +479,12 @@
 			);
 			dependencies = (
 			);
-			name = "MySynth - Shared Code";
-			productName = MySynth;
+			name = "SynGen1 - Shared Code";
+			productName = SynGen1;
 			productReference = 5AF7F1272BE557ADB6096BD7;
 			productType = "com.apple.product-type.library.static";
 		};
-		964ECC12239A15099FA69EB9 /* MySynth - AU */ = {
+		964ECC12239A15099FA69EB9 /* SynGen1 - AU */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 676C73AADB733011679B0BE9;
 			buildPhases = (
@@ -499,12 +499,12 @@
 			dependencies = (
 				ADC0E90D33B3349DE1978773,
 			);
-			name = "MySynth - AU";
-			productName = MySynth;
+			name = "SynGen1 - AU";
+			productName = SynGen1;
 			productReference = 1EBF09ADB41C8A89606E9B5B;
 			productType = "com.apple.product-type.bundle";
 		};
-		A0B8944E969BEF0599B991B0 /* MySynth - Standalone Plugin */ = {
+		A0B8944E969BEF0599B991B0 /* SynGen1 - Standalone Plugin */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A682E84299785C210590ABFF;
 			buildPhases = (
@@ -518,12 +518,12 @@
 			dependencies = (
 				0E6885F0A0FDAB97A6DF86A4,
 			);
-			name = "MySynth - Standalone Plugin";
-			productName = MySynth;
+			name = "SynGen1 - Standalone Plugin";
+			productName = SynGen1;
 			productReference = 57924354A1681A32F6AFB2C8;
 			productType = "com.apple.product-type.application";
 		};
-		DA3B67D11F416D49D2223A85 /* MySynth - VST3 */ = {
+		DA3B67D11F416D49D2223A85 /* SynGen1 - VST3 */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0F1A9718B78C147A9821912A;
 			buildPhases = (
@@ -540,8 +540,8 @@
 				080A8FE176ADFDE31280B10C,
 				D2CD08A4E4E297A69CBA632E,
 			);
-			name = "MySynth - VST3";
-			productName = MySynth;
+			name = "SynGen1 - VST3";
+			productName = SynGen1;
 			productReference = 526CDC4E2ACCB27505947BC7;
 			productType = "com.apple.product-type.bundle";
 		};
@@ -982,15 +982,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -1002,25 +1002,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -1042,8 +1042,8 @@
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
 				OTHER_LDFLAGS = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
-				PRODUCT_NAME = "MySynth";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
+				PRODUCT_NAME = "SynGen1";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				USE_HEADERMAP = NO;
@@ -1098,15 +1098,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -1118,25 +1118,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -1160,7 +1160,7 @@
 				OTHER_CODE_SIGN_FLAGS = "";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
 				OTHER_LDFLAGS = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
 				PRODUCT_NAME = "juce_vst3_helper";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
@@ -1214,15 +1214,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -1234,25 +1234,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -1276,9 +1276,9 @@
 				MTL_HEADER_SEARCH_PATHS = "/Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK $(SRCROOT)/../../JuceLibraryCode /Users/jalex/Desktop/audioplug/JUCE/modules /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_plugin_client/AU";
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_LDFLAGS = "$(inherited) -bundle -lMySynth";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
-				PRODUCT_NAME = "MySynth";
+				OTHER_LDFLAGS = "$(inherited) -bundle -lSynGen1";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
+				PRODUCT_NAME = "SynGen1";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
@@ -1332,15 +1332,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -1352,25 +1352,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -1393,8 +1393,8 @@
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
 				OTHER_LDFLAGS = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
-				PRODUCT_NAME = "MySynth";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
+				PRODUCT_NAME = "SynGen1";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				USE_HEADERMAP = NO;
@@ -1448,15 +1448,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -1468,25 +1468,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -1511,9 +1511,9 @@
 				MTL_HEADER_SEARCH_PATHS = "/Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK $(SRCROOT)/../../JuceLibraryCode /Users/jalex/Desktop/audioplug/JUCE/modules /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_plugin_client/AU";
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_LDFLAGS = "$(inherited) -bundle -lMySynth";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
-				PRODUCT_NAME = "MySynth";
+				OTHER_LDFLAGS = "$(inherited) -bundle -lSynGen1";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
+				PRODUCT_NAME = "SynGen1";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
@@ -1575,15 +1575,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -1595,25 +1595,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -1635,9 +1635,9 @@
 				MTL_HEADER_SEARCH_PATHS = "/Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK $(SRCROOT)/../../JuceLibraryCode /Users/jalex/Desktop/audioplug/JUCE/modules /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_plugin_client/AU";
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_LDFLAGS = "$(inherited) -lMySynth";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
-				PRODUCT_NAME = "MySynth";
+				OTHER_LDFLAGS = "$(inherited) -lSynGen1";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
+				PRODUCT_NAME = "SynGen1";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
@@ -1687,7 +1687,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CODE_SIGN_FLAGS = "--dryrun";
-				PRODUCT_NAME = "MySynth";
+				PRODUCT_NAME = "SynGen1";
 				SDKROOT = macosx;
 				WARNING_CFLAGS = "-Wreorder";
 				ZERO_LINK = NO;
@@ -1741,15 +1741,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -1761,25 +1761,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -1802,7 +1802,7 @@
 				OTHER_CODE_SIGN_FLAGS = "";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
 				OTHER_LDFLAGS = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
 				PRODUCT_NAME = "juce_vst3_helper";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
@@ -1856,15 +1856,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -1876,25 +1876,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -1919,10 +1919,10 @@
 				MTL_HEADER_SEARCH_PATHS = "/Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK $(SRCROOT)/../../JuceLibraryCode /Users/jalex/Desktop/audioplug/JUCE/modules /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_plugin_client/AU";
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_LDFLAGS = "$(inherited) -bundle -lMySynth";
+				OTHER_LDFLAGS = "$(inherited) -bundle -lSynGen1";
 				OTHER_REZFLAGS = "-d ppc_$ppc -d i386_$i386 -d ppc64_$ppc64 -d x86_64_$x86_64 -d arm64_$arm64 -I /System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Versions/A/Headers -I \"$(DEVELOPER_DIR)/Extras/CoreAudio/AudioUnits/AUPublic/AUBase\" -I \"$(DEVELOPER_DIR)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AudioUnit.framework/Headers\"";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
-				PRODUCT_NAME = "MySynth";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
+				PRODUCT_NAME = "SynGen1";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
@@ -1972,7 +1972,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				OTHER_CODE_SIGN_FLAGS = "--dryrun";
-				PRODUCT_NAME = "MySynth";
+				PRODUCT_NAME = "SynGen1";
 				SDKROOT = macosx;
 				WARNING_CFLAGS = "-Wreorder";
 				ZERO_LINK = NO;
@@ -2025,15 +2025,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -2045,25 +2045,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -2084,9 +2084,9 @@
 				MTL_HEADER_SEARCH_PATHS = "/Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK $(SRCROOT)/../../JuceLibraryCode /Users/jalex/Desktop/audioplug/JUCE/modules /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_plugin_client/AU";
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_LDFLAGS = "$(inherited) -lMySynth";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
-				PRODUCT_NAME = "MySynth";
+				OTHER_LDFLAGS = "$(inherited) -lSynGen1";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
+				PRODUCT_NAME = "SynGen1";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
@@ -2139,15 +2139,15 @@
 					"JucePlugin_Build_LV2=0",
 					"JucePlugin_Enable_IAA=0",
 					"JucePlugin_Enable_ARA=0",
-					"JucePlugin_Name=\\\"MySynth\\\"",
-					"JucePlugin_Desc=\\\"MySynth\\\"",
+					"JucePlugin_Name=\\\"SynGen1\\\"",
+					"JucePlugin_Desc=\\\"SynGen1\\\"",
 					"JucePlugin_Manufacturer=\\\"yourcompany\\\"",
 					"JucePlugin_ManufacturerWebsite=\\\"www.yourcompany.com\\\"",
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x536f6f71",
 					"JucePlugin_IsSynth=1",
-					"JucePlugin_WantsMidiInput=0",
+					"JucePlugin_WantsMidiInput=1",
 					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=0",
@@ -2159,25 +2159,25 @@
 					"JucePlugin_Vst3Category=\\\"Instrument|Instrument|Synth\\\"",
 					"JucePlugin_AUMainType=\\'aumu\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
-					"JucePlugin_AUExportPrefix=MySynthAU",
-					"JucePlugin_AUExportPrefixQuoted=\\\"MySynthAU\\\"",
+					"JucePlugin_AUExportPrefix=SynGen1AU",
+					"JucePlugin_AUExportPrefixQuoted=\\\"SynGen1AU\\\"",
 					"JucePlugin_AUManufacturerCode=JucePlugin_ManufacturerCode",
-					"JucePlugin_CFBundleIdentifier=com.yourcompany.MySynth",
-					"JucePlugin_AAXIdentifier=com.yourcompany.MySynth",
+					"JucePlugin_CFBundleIdentifier=com.yourcompany.SynGen1",
+					"JucePlugin_AAXIdentifier=com.yourcompany.SynGen1",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
 					"JucePlugin_AAXCategory=2048",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757267",
+					"JucePlugin_IAAType=0x61757269",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
-					"JucePlugin_IAAName=\\\"yourcompany:\\ MySynth\\\"",
+					"JucePlugin_IAAName=\\\"yourcompany:\\ SynGen1\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
 					"JucePlugin_VSTNumMidiOutputs=16",
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
-					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.MySynth.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.MySynth.aradocumentarchive.1.0.0\\\"",
+					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.SynGen1.factory\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.SynGen1.aradocumentarchive.1.0.0\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
@@ -2201,10 +2201,10 @@
 				MTL_HEADER_SEARCH_PATHS = "/Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_processors_headless/format_types/VST3_SDK $(SRCROOT)/../../JuceLibraryCode /Users/jalex/Desktop/audioplug/JUCE/modules /Users/jalex/Desktop/audioplug/JUCE/modules/juce_audio_plugin_client/AU";
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_LDFLAGS = "$(inherited) -bundle -lMySynth";
+				OTHER_LDFLAGS = "$(inherited) -bundle -lSynGen1";
 				OTHER_REZFLAGS = "-d ppc_$ppc -d i386_$i386 -d ppc64_$ppc64 -d x86_64_$x86_64 -d arm64_$arm64 -I /System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Versions/A/Headers -I \"$(DEVELOPER_DIR)/Extras/CoreAudio/AudioUnits/AUPublic/AUBase\" -I \"$(DEVELOPER_DIR)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AudioUnit.framework/Headers\"";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.MySynth;
-				PRODUCT_NAME = "MySynth";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.SynGen1;
+				PRODUCT_NAME = "SynGen1";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "i386 x86_64 arm64 arm64e";

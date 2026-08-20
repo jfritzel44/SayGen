@@ -245,6 +245,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
         "masterVolume", "Master Volume",
         juce::NormalisableRange<float> (-60.0f, 6.0f, 0.1f), 0.0f));
 
+    // How played velocity maps to level: 0 = linear/untouched, positive
+    // boosts quieter notes, negative suppresses them. A player-feel setting
+    // rather than part of any one patch, so (like Master Volume) it's not
+    // captured by "Save Current Patch"
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "velocityCurve", "Velocity Curve",
+        juce::NormalisableRange<float> (-1.0f, 1.0f, 0.01f), 0.0f));
+
     return layout;
 }
 
@@ -260,6 +268,10 @@ MySynthAudioProcessor::MySynthAudioProcessor()
        apvts (*this, nullptr, "Parameters", createParameterLayout())
 {
     presets = getFactoryPresets();
+    numFactoryPresets = presets.size();
+
+    for (auto& userPreset : loadUserPresets())
+        presets.push_back (std::move (userPreset));
 }
 
 MySynthAudioProcessor::~MySynthAudioProcessor()
@@ -346,6 +358,11 @@ void MySynthAudioProcessor::saveCurrentPatchAsPreset (const juce::String& name)
 
     presets.push_back (std::move (preset));
     currentProgram = (int) presets.size() - 1;
+
+    // Persist just the user-saved patches (the factory ones are baked into
+    // the binary and always come back on their own) so this one is still
+    // here next time the app/plugin is opened
+    saveUserPresets ({ presets.begin() + (long) numFactoryPresets, presets.end() });
 }
 
 //==============================================================================
@@ -379,6 +396,8 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
         voice->fltRelease     = &fltRelease;
         voice->overloadAmount = &overloadAmount;
         voice->kbTrackAmount  = &kbTrackAmount;
+        voice->velocityCurve  = &velocityCurveAmount;
+        voice->pitchBend      = &pitchBendSemitones;
         synth.addVoice (voice);
     }
 
@@ -455,6 +474,7 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     fltSustain.store (apvts.getRawParameterValue ("fltSustain")->load());
     fltRelease.store (apvts.getRawParameterValue ("fltRelease")->load());
     overloadAmount.store (apvts.getRawParameterValue ("overload")->load());
+    velocityCurveAmount.store (apvts.getRawParameterValue ("velocityCurve")->load());
 
     // Base pitch/cutoff, before mod LFO is added in below. Read once here so
     // each sub-block's LFO contribution is applied fresh rather than
@@ -476,6 +496,19 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     if (!midiMessages.isEmpty())
         midiActivity = true;
+
+    // Pitch bend: read into a shared atomic rather than each voice's own
+    // SynthesiserVoice::pitchWheelMoved(), since that callback only reaches
+    // voices actively sounding on the channel at the moment the wheel moves.
+    // A voice that starts a later note while the wheel is already held bent
+    // would otherwise miss it and start unbent.
+    for (const auto metadata : midiMessages)
+    {
+        auto message = metadata.getMessage();
+        if (message.isPitchWheel())
+            pitchBendSemitones.store (
+                (float) (message.getPitchWheelValue() - 8192) / 8192.0f * pitchBendRangeSemitones);
+    }
 
     // Render in small sub-blocks instead of the whole buffer at once, so
     // pitch/cutoff/amp modulation gets updated far more often than the

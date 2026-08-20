@@ -8,11 +8,11 @@
     <key>CFBundleIconFile</key>
     <string></string>
     <key>CFBundleIdentifier</key>
-    <string>com.yourcompany.MySynth</string>
+    <string>com.yourcompany.SynGen1</string>
     <key>CFBundleName</key>
-    <string>MySynth</string>
+    <string>SynGen1</string>
     <key>CFBundleDisplayName</key>
-    <string>MySynth</string>
+    <string>SynGen1</string>
     <key>CFBundlePackageType</key>
     <string></string>
     <key>CFBundleSignature</key>

@@ -33,6 +33,12 @@ public:
     std::atomic<float> fltRelease     { 0.1f };
     std::atomic<float> overloadAmount { 0.0f };
     std::atomic<float> kbTrackAmount  { 0.0f };
+    std::atomic<float> velocityCurveAmount { 0.0f };
+    std::atomic<float> pitchBendSemitones  { 0.0f };
+
+    // How far a full pitch-wheel deflection bends the pitch, in semitones;
+    // +/-2 (a whole tone) is the standard MIDI default
+    static constexpr float pitchBendRangeSemitones = 2.0f;
 
     juce::MidiKeyboardState keyboardState;
     Oscilloscope oscilloscope;
@@ -74,6 +80,11 @@ public:
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    // Presets before this index are the built-in factory ones (baked into
+    // the binary, nothing to persist); presets from here on are user-saved
+    // patches, written to disk in saveCurrentPatchAsPreset()
+    size_t numFactoryPresets = 0;
 
     // When 1-2 sync is on, collapse the incoming MIDI stream down to one
     // note at a time, Little Phatty style, instead of letting every note
