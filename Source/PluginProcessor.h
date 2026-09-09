@@ -12,6 +12,11 @@ public:
     MySynthAudioProcessor();
     ~MySynthAudioProcessor() override;
 
+    std::atomic<int> osc1PhaseMode { 0 }, osc2PhaseMode { 0 };
+    std::atomic<float> osc1StartPhase { 0 }, osc2StartPhase { 90 }, phaseRandomness { 1 };
+    std::atomic<float> unisonWidth { 0.9f }, osc2Coarse { 0 };
+    std::atomic<float> osc1Level { 0.75f }, osc2Level { 0.75f };
+    std::atomic<float> filterCompensation { 0.5f }, envelopeCurve { 0.65f };
     std::atomic<bool>  midiActivity   { false };
     std::atomic<int>   oscType        { 0 };
     std::atomic<int>   osc2Type       { 0 };
@@ -26,6 +31,24 @@ public:
     std::atomic<float> cutoffHz       { 20000.0f };
     std::atomic<float> resonanceQ     { 0.707f };
     std::atomic<float> detuneCents    { 7.0f };
+    std::atomic<int>   unisonVoices      { 1 };      // shared by both oscillators, 1..MySynthVoice::kMaxUnisonVoices
+    std::atomic<float> unisonDetuneCents { 14.0f };  // fixed per-oscillator unison spread, not user-adjustable
+
+    // "Modern" oscillator mode: continuous saw/pulse/triangle mix + sub-
+    // octave, independent per oscillator, overriding oscType/osc2Type's
+    // single-waveform pick while on. See MySynthVoice for the DSP.
+    std::atomic<bool>  osc1ModernOn   { false };
+    std::atomic<float> osc1SawMix     { 1.0f };
+    std::atomic<float> osc1PulseMix   { 0.0f };
+    std::atomic<float> osc1TriMix     { 0.0f };
+    std::atomic<float> osc1PulseWidth { 0.5f };
+    std::atomic<bool>  osc1SubOctave  { false };
+    std::atomic<bool>  osc2ModernOn   { false };
+    std::atomic<float> osc2SawMix     { 1.0f };
+    std::atomic<float> osc2PulseMix   { 0.0f };
+    std::atomic<float> osc2TriMix     { 0.0f };
+    std::atomic<float> osc2PulseWidth { 0.5f };
+    std::atomic<bool>  osc2SubOctave  { false };
     std::atomic<float> envAmountOct   { 2.0f };
     std::atomic<float> fltAttack      { 0.005f };
     std::atomic<float> fltDecay       { 0.25f };
@@ -35,6 +58,17 @@ public:
     std::atomic<float> kbTrackAmount  { 0.0f };
     std::atomic<float> velocityCurveAmount { 0.0f };
     std::atomic<float> pitchBendSemitones  { 0.0f };
+    std::atomic<float> driftAmount         { 1.0f };  // 0 = perfectly stable, 1 = full analog-style drift
+    std::atomic<bool>  glideOn         { false };
+    std::atomic<float> glideTimeSeconds{ 0.08f };
+
+    // Mod wheel (MIDI CC1) position, 0-1. Gates the LFO's pitch-vibrato
+    // depth (see processBlock) so a patch with vibrato dialed in stays
+    // still until the wheel is raised, the way a real analog synth's
+    // vibrato works, rather than warbling for the entire time a note is
+    // held. Filter/amp LFO destinations aren't gated by it - those are
+    // meant to run continuously once dialed in (auto-wah, tremolo).
+    std::atomic<float> modWheelAmount { 0.0f };
 
     // How far a full pitch-wheel deflection bends the pitch, in semitones;
     // +/-2 (a whole tone) is the standard MIDI default
@@ -86,13 +120,18 @@ private:
     // patches, written to disk in saveCurrentPatchAsPreset()
     size_t numFactoryPresets = 0;
 
-    // When 1-2 sync is on, collapse the incoming MIDI stream down to one
-    // note at a time, Little Phatty style, instead of letting every note
-    // ring on its own independently-synced voice
-    struct HeldNote { int note; juce::uint8 velocity; int channel; };
+    // When Glide is on, collapse the incoming MIDI stream down to one note
+    // at a time: the first note-on in a phrase triggers normally, but a
+    // note-on played while another is still held retargets the currently
+    // sounding voice's pitch (and ramps its level toward the new velocity)
+    // instead of retriggering the envelope, producing the legato portamento
+    // slide classic analog mono-bass patches rely on. A note-off only
+    // actually releases the voice once every held note in the stack has
+    // been let go; otherwise it retargets back to whichever note is still
+    // held, again without retriggering.
+    struct HeldNote { int note; float velocity; int channel; };  // velocity normalised [0, 1], matching startNote()'s
     std::vector<HeldNote> monoNoteStack;
-    int monoCurrentNote = -1;
-    void applyMonoSyncVoicing (juce::MidiBuffer& midiMessages);
+    void applyGlideVoicing (juce::MidiBuffer& midiMessages);
 
     // Single free-running mod LFO, computed once per block and routed to
     // whichever destination is selected (pitch, filter cutoff, or amp gain)
@@ -100,12 +139,15 @@ private:
     float  lfoHeldRandom = 0.0f;
     float  lastAmpGain   = 1.0f;
 
+    juce::MidiBuffer enhancedMidi;
     juce::Synthesiser synth;
     juce::dsp::NoiseGate<float> gate;
     juce::dsp::LadderFilter<float> ladder;
     juce::dsp::Chorus<float> chorus;
     juce::dsp::Phaser<float> phaser;
     juce::dsp::Reverb reverb;
+    juce::dsp::DelayLine<float> delayLine;
+    std::vector<float> delayDampState;  // one-pole lowpass state in the feedback path, per channel
     juce::dsp::Compressor<float> comp;
     juce::dsp::Limiter<float> limiter;
     int currentProgram = 0;

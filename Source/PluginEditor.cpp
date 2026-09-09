@@ -25,6 +25,9 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
       oscSyncButton (p.apvts, "oscSync", "1-2 Sync"),
       detuneKnob   (p.apvts, "detune",   "Detune", &oscLookAndFeel),
       pitchKnob    (p.apvts, "pitch",    "Pitch", &oscLookAndFeel),
+      unisonKnob   (p.apvts, "unisonVoices", "Unison", &oscLookAndFeel),
+      glideButton   (p.apvts, "glideOn",   "Glide"),
+      glideTimeKnob (p.apvts, "glideTime", "Glide Time", &oscLookAndFeel),
       overloadKnob (p.apvts, "overload", "Overload", &oscLookAndFeel),
       kbAmountKnob (p.apvts, "kbAmount", "KB Amount", &oscLookAndFeel),
       cutoffKnob    (p.apvts, "cutoff",    "Cutoff",    &oscLookAndFeel),
@@ -40,7 +43,8 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
       fltReleaseKnob (p.apvts, "fltRelease", "Release",  &oscLookAndFeel),
       lfoRateKnob    (p.apvts, "lfoRate",    "LFO Rate", &oscLookAndFeel),
       lfoAmountKnob  (p.apvts, "lfoAmount",  "Amount",   &oscLookAndFeel),
-      velocityPanel  (p.apvts)
+      velocityPanel  (p.apvts),
+      modernOscPanel (p.apvts, &oscLookAndFeel)
 {
     sectionTitleTypeface = juce::Typeface::createSystemTypefaceFor (
         BinaryData::EurostileExtendedBlack_ttf, BinaryData::EurostileExtendedBlack_ttfSize);
@@ -112,6 +116,14 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
     pitchKnob.getSlider().setTextValueSuffix (" st");
     addAndMakeVisible (pitchKnob);
 
+    unisonKnob.getSlider().setTextValueSuffix (" vox");
+    addAndMakeVisible (unisonKnob);
+
+    addAndMakeVisible (glideButton);
+
+    glideTimeKnob.getSlider().setTextValueSuffix (" s");
+    addAndMakeVisible (glideTimeKnob);
+
     addAndMakeVisible (overloadKnob);
 
     // Double-click to snap straight to 0 (no filter contribution), so it's
@@ -179,14 +191,27 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
     velocityButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     velocityButton.onClick = [this]
     {
+        // The two overlays share the same screen area, so opening one
+        // closes the other rather than letting them stack
+        modernOscPanel.setVisible (false);
         velocityPanel.setVisible (! velocityPanel.isVisible());
     };
     addAndMakeVisible (velocityButton);
 
-    // Added last so it draws/receives clicks on top of everything it
-    // overlaps; starts hidden since it's an overlay, not part of the
+    modernOscButton.setColour (juce::TextButton::buttonColourId, panelColour);
+    modernOscButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    modernOscButton.onClick = [this]
+    {
+        velocityPanel.setVisible (false);
+        modernOscPanel.setVisible (! modernOscPanel.isVisible());
+    };
+    addAndMakeVisible (modernOscButton);
+
+    // Added last so they draw/receive clicks on top of everything they
+    // overlap; start hidden since they're overlays, not part of the
     // always-visible layout
     addChildComponent (velocityPanel);
+    addChildComponent (modernOscPanel);
 }
 
 MySynthAudioProcessorEditor::Content::~Content()
@@ -204,9 +229,44 @@ void MySynthAudioProcessorEditor::Content::rebuildPresetMenu()
     presetBox.addItem ("Save Current Patch", saveCurrentPatchItemId);
     presetBox.addSeparator();
 
-    int itemId = firstPresetItemId;
-    for (auto& preset : audioProcessor.getPresets())
-        presetBox.addItem (preset.name, itemId++);
+    // Grouped under section headings by category rather than one flat list.
+    // Item IDs are still firstPresetItemId + the preset's index in the
+    // underlying vector (not its position in this grouped listing), since
+    // that's what setCurrentProgram()/getCurrentProgram() key off of.
+    static const juce::StringArray factoryCategoryOrder { "Bass", "Poly Short", "Poly Long", "Synth Lead" };
+
+    auto& presets = audioProcessor.getPresets();
+
+    for (auto& category : factoryCategoryOrder)
+    {
+        bool addedHeading = false;
+        for (int i = 0; i < (int) presets.size(); ++i)
+        {
+            if (presets[(size_t) i].category != category)
+                continue;
+            if (! addedHeading)
+            {
+                presetBox.addSectionHeading (category);
+                addedHeading = true;
+            }
+            presetBox.addItem (presets[(size_t) i].name, firstPresetItemId + i);
+        }
+    }
+
+    // Anything outside the four factory categories - currently just patches
+    // saved via "Save Current Patch" - gets its own trailing section
+    bool addedUserHeading = false;
+    for (int i = 0; i < (int) presets.size(); ++i)
+    {
+        if (factoryCategoryOrder.contains (presets[(size_t) i].category))
+            continue;
+        if (! addedUserHeading)
+        {
+            presetBox.addSectionHeading ("User");
+            addedUserHeading = true;
+        }
+        presetBox.addItem (presets[(size_t) i].name, firstPresetItemId + i);
+    }
 }
 
 void MySynthAudioProcessorEditor::Content::showSavePatchDialog()
@@ -362,21 +422,25 @@ void MySynthAudioProcessorEditor::Content::resized()
     oscilloscope.setBounds (462, 48, 236, 44);
 
     // Oscillators section: each osc knob gets its octave LED bank beside it,
-    // then the 1-2 sync toggle, then detune and pitch, all on one row. The
-    // row sits at y=302 so every title label lines up horizontally; Osc 1
-    // and Osc 2's waveform artwork is height-bound within its own box, so
-    // those two get extra height (growing downward, past the rest of the
+    // then the 1-2 sync toggle, then detune, pitch, and unison, all on one
+    // row. The row sits at y=302 so every title label lines up horizontally;
+    // Osc 1 and Osc 2's waveform artwork is height-bound within its own box,
+    // so those two get extra height (growing downward, past the rest of the
     // row) to render larger without disturbing their neighbours' label
     // position. This now reaches the top/bottom slack available inside the
     // "Oscillators" panel outline; growing further needs a taller panel.
+    // The row itself is already pixel-packed at 604px wide with no slack, so
+    // detune/pitch/octave/sync were each trimmed a little to make room for
+    // unison rather than widening the panel.
     juce::Rectangle<int> oscRow (158, 302, 604, 88);
     oscTypeKnob.setBounds        (oscRow.removeFromLeft (110).withWidth (104).withHeight (104));
-    osc1OctaveSelector.setBounds (oscRow.removeFromLeft (64));
+    osc1OctaveSelector.setBounds (oscRow.removeFromLeft (58));
     osc2TypeKnob.setBounds       (oscRow.removeFromLeft (110).withWidth (104).withHeight (104).translated (-10, 0));
-    osc2OctaveSelector.setBounds (oscRow.removeFromLeft (64).translated (-10, 0));
-    oscSyncButton.setBounds      (oscRow.removeFromLeft (56));
-    detuneKnob.setBounds         (oscRow.removeFromLeft (100));
-    pitchKnob.setBounds          (oscRow.removeFromLeft (100));
+    osc2OctaveSelector.setBounds (oscRow.removeFromLeft (58).translated (-10, 0));
+    oscSyncButton.setBounds      (oscRow.removeFromLeft (46));
+    detuneKnob.setBounds         (oscRow.removeFromLeft (78));
+    pitchKnob.setBounds          (oscRow.removeFromLeft (78));
+    unisonKnob.setBounds         (oscRow);
 
     // Master panel: volume knob plus a peak meter reading the true final
     // output (post master gain), sitting above Amp between Oscillators
@@ -392,15 +456,20 @@ void MySynthAudioProcessorEditor::Content::resized()
     envAmountKnob.setBounds (30, 427, 100, 88);
     kbAmountKnob.setBounds  (30, 528, 100, 88);
 
-    // Filter section: cutoff/resonance row, then its envelope row
-    juce::Rectangle<int> filterRow (280, 442, 200, 88);
-    cutoffKnob.setBounds    (filterRow.removeFromLeft (100));
-    resonanceKnob.setBounds (filterRow);
+    // Filter section: cutoff/resonance/glide across the top row, and their
+    // envelope counterparts directly below in the same four columns, so
+    // Cutoff lines up with Attack and Resonance lines up with Decay.
+    constexpr int filterColWidth = 460 / 4;
+    juce::Rectangle<int> filterRow (150, 442, 460, 88);
+    cutoffKnob.setBounds    (filterRow.removeFromLeft (filterColWidth));
+    resonanceKnob.setBounds (filterRow.removeFromLeft (filterColWidth));
+    glideButton.setBounds   (filterRow.removeFromLeft (filterColWidth));
+    glideTimeKnob.setBounds (filterRow);
 
-    juce::Rectangle<int> filterEnvRow (180, 532, 400, 88);
-    fltAttackKnob.setBounds  (filterEnvRow.removeFromLeft (100));
-    fltDecayKnob.setBounds   (filterEnvRow.removeFromLeft (100));
-    fltSustainKnob.setBounds (filterEnvRow.removeFromLeft (100));
+    juce::Rectangle<int> filterEnvRow (150, 532, 460, 88);
+    fltAttackKnob.setBounds  (filterEnvRow.removeFromLeft (filterColWidth));
+    fltDecayKnob.setBounds   (filterEnvRow.removeFromLeft (filterColWidth));
+    fltSustainKnob.setBounds (filterEnvRow.removeFromLeft (filterColWidth));
     fltReleaseKnob.setBounds (filterEnvRow);
 
     // Amp section: ADSR in a 2x2 grid
@@ -423,6 +492,9 @@ void MySynthAudioProcessorEditor::Content::resized()
     // Modulation), rather than taking up permanent space in the layout
     velocityButton.setBounds (930, 8, 90, 24);
     velocityPanel.setBounds  (20, 286, 1000, 342);
+
+    modernOscButton.setBounds (826, 8, 90, 24);
+    modernOscPanel.setBounds  (20, 286, 1000, 342);
 }
 
 //==============================================================================

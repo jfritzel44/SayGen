@@ -47,15 +47,21 @@ public:
         addKnob (4, apvts, "reverbWidth", "WIDTH", "", 2);
         addKnob (4, apvts, "reverbMix",   "MIX",   "", 2);
 
-        initEffect (5, "COMP",   "compOn",   apvts);
-        addKnob (5, apvts, "compThresh",  "THRESH", " dB", 0);
-        addKnob (5, apvts, "compRatio",   "RATIO",  "",    1);
-        addKnob (5, apvts, "compAttack",  "ATT",    " ms", 1);
-        addKnob (5, apvts, "compRelease", "REL",    " ms", 0);
+        initEffect (5, "DELAY",  "delayOn",  apvts);
+        addKnob (5, apvts, "delayTime",     "TIME", " s", 2);
+        addKnob (5, apvts, "delayFeedback", "FDBK", "",   2);
+        addKnob (5, apvts, "delayDamp",     "DAMP", "",   2);
+        addKnob (5, apvts, "delayMix",      "MIX",  "",   2);
 
-        initEffect (6, "LIMIT",  "limitOn",  apvts);
-        addKnob (6, apvts, "limitThresh",  "THRESH", " dB", 1);
-        addKnob (6, apvts, "limitRelease", "REL",    " ms", 0);
+        initEffect (6, "COMP",   "compOn",   apvts);
+        addKnob (6, apvts, "compThresh",  "THRESH", " dB", 0);
+        addKnob (6, apvts, "compRatio",   "RATIO",  "",    1);
+        addKnob (6, apvts, "compAttack",  "ATT",    " ms", 1);
+        addKnob (6, apvts, "compRelease", "REL",    " ms", 0);
+
+        initEffect (7, "LIMIT",  "limitOn",  apvts);
+        addKnob (7, apvts, "limitThresh",  "THRESH", " dB", 1);
+        addKnob (7, apvts, "limitRelease", "REL",    " ms", 0);
 
         updateVisibility();
     }
@@ -326,7 +332,7 @@ private:
     const juce::Colour ink       { 0xff1c3a5e };
     const juce::Colour highlight { 0xff4878a8 };
 
-    static constexpr int numEffects = 7;
+    static constexpr int numEffects = 8;
     static constexpr int rowHeight  = 20;
 
     LcdLookAndFeel lcdLookAndFeel;

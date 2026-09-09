@@ -1,16 +1,29 @@
 #pragma once
 #include <JuceHeader.h>
 #include "../VelocityCurve.h"
+#include "EnhancedDSP.h"
+#include "OscillatorMotion.h"
 
 struct MySynthSound : public juce::SynthesiserSound
 {
-    MySynthSound() {}
-    bool appliesToNote    (int) override { return true; }
+    bool appliesToNote (int) override { return true; }
     bool appliesToChannel (int) override { return true; }
 };
 
 struct MySynthVoice : public juce::SynthesiserVoice
 {
+    static constexpr int kMaxUnisonVoices = 7;
+    std::atomic<int>* osc1PhaseMode = nullptr;
+    std::atomic<int>* osc2PhaseMode = nullptr;
+    std::atomic<float>* osc1StartPhase = nullptr;
+    std::atomic<float>* osc2StartPhase = nullptr;
+    std::atomic<float>* phaseRandomness = nullptr;
+    std::atomic<float>* unisonWidth = nullptr;
+    std::atomic<float>* osc2Coarse = nullptr;
+    std::atomic<float>* osc1Level = nullptr;
+    std::atomic<float>* osc2Level = nullptr;
+    std::atomic<float>* filterCompensation = nullptr;
+    std::atomic<float>* envelopeCurve = nullptr;
     std::atomic<int>*   oscType        = nullptr;
     std::atomic<int>*   osc2Type       = nullptr;  // 0 = off, 1..4 = waveform
     std::atomic<int>*   osc1Octave     = nullptr;  // 0=16', 1=8', 2=4', 3=2'
@@ -33,59 +46,105 @@ struct MySynthVoice : public juce::SynthesiserVoice
     std::atomic<float>* kbTrackAmount  = nullptr;  // filter keyboard tracking, 0 = none, 1 = 1:1 with pitch
     std::atomic<float>* velocityCurve  = nullptr;  // 0 = linear, + boosts soft notes, - suppresses them
     std::atomic<float>* pitchBend      = nullptr;  // current pitch-wheel offset, in semitones
+    std::atomic<float>* driftAmount    = nullptr;  // 0 = perfectly stable/no drift, 1 = full drift (default)
+    std::atomic<int>*   osc1UnisonVoices = nullptr;  // 1..kMaxUnisonVoices stacked detuned copies of osc 1
+    std::atomic<int>*   osc2UnisonVoices = nullptr;  // 1..kMaxUnisonVoices stacked detuned copies of osc 2
+    std::atomic<float>* osc1UnisonDetune = nullptr;  // cents, spread of the outer osc 1 unison voices from centre
+    std::atomic<float>* osc2UnisonDetune = nullptr;  // cents, spread of the outer osc 2 unison voices from centre
 
-    bool canPlaySound (juce::SynthesiserSound* s) override
+    // Modern mode: when on, that oscillator
+    // ignores oscType/osc2Type's single-waveform pick and instead blends
+    // continuous saw/pulse/triangle amounts, plus an
+    // optional square sub-oscillator one octave down, phase-locked to the
+    // main oscillator (like an analog flip-flop divider off its own edge).
+    std::atomic<bool>*  osc1ModernOn    = nullptr;
+    std::atomic<float>* osc1SawMix      = nullptr;
+    std::atomic<float>* osc1PulseMix    = nullptr;
+    std::atomic<float>* osc1TriMix      = nullptr;
+    std::atomic<float>* osc1PulseWidth  = nullptr;
+    std::atomic<bool>*  osc1SubOctave   = nullptr;
+    std::atomic<bool>*  osc2ModernOn    = nullptr;
+    std::atomic<float>* osc2SawMix      = nullptr;
+    std::atomic<float>* osc2PulseMix    = nullptr;
+    std::atomic<float>* osc2TriMix      = nullptr;
+    std::atomic<float>* osc2PulseWidth  = nullptr;
+    std::atomic<bool>*  osc2SubOctave   = nullptr;
+
+    bool canPlaySound (juce::SynthesiserSound* sound) override
     {
-        return dynamic_cast<MySynthSound*>(s) != nullptr;
+        return dynamic_cast<MySynthSound*> (sound) != nullptr;
     }
 
-    void startNote (int midiNoteNumber, float velocity,
-                    juce::SynthesiserSound*, int) override
+    // For reproducible offline rendering; never changes JUCE's global RNG.
+    void setOscillatorSeed (uint32_t seed)
     {
-        frequency = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
-        amplitude = shapeVelocity (velocity, velocityCurve ? velocityCurve->load() : 0.0f);
-        phase  = 0.0;
+        motionSeed = seed != 0 ? seed : 1;
+        random.setSeed (motionSeed);
+        motionRate = 0;
+        phaseInitialised = false;
+    }
 
-        // Osc 2 starts a quarter-cycle ahead of osc 1's phase=0 edge instead
-        // of locking to it. Two sawtooths (or squares) both restarting at
-        // their discontinuity on the same sample reinforce each other into a
-        // much sharper combined edge right at the attack, heard as an extra
-        // click that isn't there once they've drifted apart. A fixed offset
-        // (rather than a random one) avoids that without making each note's
-        // timbre inconsistent. Hard sync forces its own phase relationship on
-        // the first osc 1 wrap anyway, so it's exempt.
-        const bool synced = oscSync && oscSync->load();
-        phase2 = synced ? 0.0 : 0.25 * juce::MathConstants<double>::twoPi;
-        syncDeclick = 0.0;
-
-        // Per-voice analog-style drift: each note lands a hair off pitch
-        // (up to +/- 2.5 cents), like mismatched voice cards on a polysynth
-        drift = std::pow (2.0, (juce::Random::getSystemRandom().nextDouble() * 5.0 - 2.5) / 1200.0);
-
-        adsr.setSampleRate (getSampleRate());
-        adsr.setParameters ({ attackSeconds  ? attackSeconds->load()  : 0.01f,
-                              decaySeconds   ? decaySeconds->load()   : 0.1f,
-                              sustainLevel   ? sustainLevel->load()   : 0.7f,
-                              releaseSeconds ? releaseSeconds->load() : 0.05f });
-        adsr.noteOn();
-
-        filterEnv.setSampleRate (getSampleRate());
-        filterEnv.setParameters ({ fltAttack  ? fltAttack->load()  : 0.005f,
-                                   fltDecay   ? fltDecay->load()   : 0.25f,
-                                   fltSustain ? fltSustain->load() : 0.2f,
-                                   fltRelease ? fltRelease->load() : 0.1f });
-        filterEnv.noteOn();
-
-        // Two 2-pole stages in series make a 4-pole/24dB-per-octave lowpass
-        // instead of one stage's gentler 12dB/octave, so content above
-        // cutoff is cut much harder
-        for (auto& f : filter)
+    void startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound*, int) override
+    {
+        renderRate = getSampleRate() * 4;
+        if (motionRate != renderRate)
         {
-            f.prepare ({ getSampleRate(), 512, 1 });
-            f.setType (juce::dsp::StateVariableTPTFilter<float>::Type::lowpass);
-            f.reset();
+            motionRate = renderRate;
+            commonDrift.prepare (renderRate, motionSeed);
+            for (int bank = 0; bank < 2; ++bank)
+                for (int u = 0; u < kMaxUnisonVoices; ++u)
+                    oscillators[bank][u].drift.prepare (renderRate, motionSeed + 7919u * (1 + bank * 7 + u));
         }
-
+        glide.reset (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber),
+                     shapeVelocity (velocity, read (velocityCurve, 0)));
+        count[0] = juce::jlimit (1, kMaxUnisonVoices, read (osc1UnisonVoices, 1));
+        count[1] = juce::jlimit (1, kMaxUnisonVoices, read (osc2UnisonVoices, 1));
+        phaseMode[0] = read (osc1PhaseMode, 0);
+        phaseMode[1] = read (osc2PhaseMode, 0);
+        const double startPhase[] = { read (osc1StartPhase, 0) / 360.0, read (osc2StartPhase, 90) / 360.0 };
+        const double randomness = read (phaseRandomness, 1);
+        for (int bank = 0; bank < 2; ++bank)
+        {
+            gain[bank] = 1.0f / std::sqrt ((float) count[bank]);
+            for (int u = 0; u < kMaxUnisonVoices; ++u)
+            {
+                auto& osc = oscillators[bank][u];
+                osc.spread = count[bank] <= 1 ? 0.0 : 2.0 * u / (count[bank] - 1) - 1.0;
+                if (phaseMode[bank] != 2 || ! phaseInitialised)
+                {
+                    const double offset = phaseMode[bank] == 1 ? randomness * random.nextDouble() : 0;
+                    const double phase = startPhase[bank] + (double) u / count[bank] + offset;
+                    osc.wave.setPhase (phase, phase * 0.5);
+                }
+                // A muted interval advances phase without computing BLEP tails.
+                osc.wave.clearCorrection();
+                osc.detune.reset (renderRate, 0.01);
+            }
+            for (auto& mix : waveMix[bank]) mix.reset (renderRate, 0.005);
+            width[bank].reset (renderRate, 0.005);
+            tuning[bank].reset (renderRate, 0.005);
+            level[bank].reset (renderRate, 0.01);
+            cachedTuning[bank] = std::numeric_limits<double>::quiet_NaN();
+        }
+        phaseInitialised = true;
+        stereoWidth.reset (renderRate, 0.01);
+        driftDepth.reset (renderRate, 0.02);
+        cutoffSmooth.reset (renderRate, 0.005);
+        resonanceSmooth.reset (renderRate, 0.01);
+        driveSmooth.reset (renderRate, 0.01);
+        compensationSmooth.reset (renderRate, 0.01);
+        envAmountSmooth.reset (renderRate, 0.005);
+        trackingSmooth.reset (renderRate, 0.005);
+        updateControls (true);
+        cachedWidth = -1;
+        updatePan();
+        for (auto& filter : ladder) filter.reset();
+        for (auto& d : decimator) d.reset();
+        ampEnvelope.prepare (renderRate); filterEnvelope.prepare (renderRate);
+        ampEnvelope.reset(); filterEnvelope.reset();
+        updateEnvelopes();
+        ampEnvelope.noteOn(); filterEnvelope.noteOn();
+        tailSamples = 33;
         active = true;
     }
 
@@ -93,200 +152,260 @@ struct MySynthVoice : public juce::SynthesiserVoice
     {
         if (allowTailOff)
         {
-            adsr.noteOff();  // keep rendering until the release tail finishes
-            filterEnv.noteOff();
+            ampEnvelope.noteOff(); filterEnvelope.noteOff();
         }
         else
         {
-            adsr.reset();
-            filterEnv.reset();
+            ampEnvelope.reset(); filterEnvelope.reset();
             active = false;
             clearCurrentNote();
         }
     }
 
-    void renderNextBlock (juce::AudioBuffer<float>& buffer,
-                          int startSample, int numSamples) override
+    void setGlideTarget (int note, float velocity, float seconds)
     {
-        if (!active) return;
+        glide.target (juce::MidiMessage::getMidiNoteInHertz (note),
+                      shapeVelocity (velocity, read (velocityCurve, 0)), seconds, renderRate);
+    }
 
-        const double twoPi = juce::MathConstants<double>::twoPi;
-
-        const double semitones  = (pitchSemitones ? (double) pitchSemitones->load() : 0.0)
-                                 + (pitchBend       ? (double) pitchBend->load()       : 0.0);
-        const double multiplier = std::pow (2.0, semitones / 12.0);
-        const auto baseDelta = twoPi * frequency * multiplier * drift / getSampleRate();
-
-        // Octave range switches, Little Phatty style: 16' is an octave below
-        // the played note, 8' is unison, 4' and 2' one and two octaves up
-        const double range1 = std::exp2 ((osc1Octave ? osc1Octave->load() : 1) - 1.0);
-        const double range2 = std::exp2 ((osc2Octave ? osc2Octave->load() : 1) - 1.0);
-        auto phaseDelta = baseDelta * range1;
-
-        const double detune = detuneCents ? (double) detuneCents->load() : 0.0;
-        auto phaseDelta2 = baseDelta * range2 * std::pow (2.0, detune / 1200.0);
-
-        const float maxCutoff  = (float) (getSampleRate() * 0.45);
-        const float baseCutoff = juce::jlimit (20.0f, maxCutoff,
-                                               cutoffHz ? cutoffHz->load() : 20000.0f);
-        const float envOctaves = envAmountOct ? envAmountOct->load() : 0.0f;
-
-        // Two cascaded stages at the same Q multiply their resonant peaks
-        // together rather than adding, so feeding the raw knob value to both
-        // would make the filter ring/self-oscillate far earlier than the
-        // 0.5-10 range implies. Taking the square root of the knob value per
-        // stage keeps the combined peak in line with what a single stage at
-        // that Q would have done.
-        const float perStageQ = std::sqrt (resonanceQ ? resonanceQ->load() : 0.707f);
-        for (auto& f : filter)
-            f.setResonance (perStageQ);
-
-        // Keyboard tracking: shift the cutoff by the note's distance (in
-        // octaves) from middle C, scaled by the tracking amount
-        const float kbAmount    = kbTrackAmount ? kbTrackAmount->load() : 0.0f;
-        constexpr float middleC = 261.6256f;
-        const float kbOctaves   = kbAmount * (float) std::log2 (frequency / middleC);
-
-        // Overload drive: 0 is clean (near-linear), dialing up saturates the
-        // signal harder before it reaches the filter, Little Phatty style
-        const float driveAmount = overloadAmount ? overloadAmount->load() : 0.0f;
-        const float drive       = juce::jmap (driveAmount, 0.0f, 1.0f, 0.0001f, 15.0f);
-        const float driveNorm   = 1.0f / std::tanh (drive);
-
-        int type  = oscType  ? oscType->load()  : 0;
-        int type2 = osc2Type ? osc2Type->load() : 0;  // 0 = off
-
-        const double dt1 = phaseDelta  / twoPi;
-        const double dt2 = phaseDelta2 / twoPi;
-
-        const bool sync = oscSync && oscSync->load();
-
-        // A hard sync reset jumps osc 2's output instantly, which is full of
-        // aliased high end. Fading that jump out over ~0.25ms (instead of
-        // snapping) keeps the sync growl but removes the harsh/fuzzy edge.
-        const double declickCoeff = std::exp (-1.0 / (0.00025 * getSampleRate()));
-
-        for (int i = startSample; i < startSample + numSamples; ++i)
+    void renderNextBlock (juce::AudioBuffer<float>& buffer, int startSample, int numSamples) override
+    {
+        if (numSamples <= 0) return;
+        if (! active)
         {
-            double sample = waveSample (type, phase / twoPi, dt1);
-            if (type2 > 0)
-                sample += waveSample (type2 - 1, phase2 / twoPi, dt2) + syncDeclick;
-
-            // Filter env sweeps the cutoff up/down by envOctaves at full
-            // swing, on top of the fixed keyboard-tracking offset
-            const float modulatedCutoff = juce::jlimit (20.0f, maxCutoff,
-                baseCutoff * (float) std::exp2 (envOctaves * filterEnv.getNextSample() + kbOctaves));
-            for (auto& f : filter)
-                f.setCutoffFrequency (modulatedCutoff);
-
-            auto out = (float)(sample * amplitude * 0.3) * adsr.getNextSample();
-            out = std::tanh (out * drive) * driveNorm;  // Overload, pre-filter
-            out = std::tanh (1.5f * out) / 1.5f;  // gentle analog-style rounding, also pre-filter
-            out = filter[0].processSample (0, out);  // two stages in series run last,
-            out = filter[1].processSample (0, out);  // so cutoff has the final say
-            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-                buffer.addSample (ch, i, out);
-
-            syncDeclick *= declickCoeff;
-
-            const double newPhase1 = phase + phaseDelta;
-            const bool osc1Wrapped = newPhase1 >= twoPi;
-            phase = std::fmod (newPhase1, twoPi);
-
-            // Hard sync, Little Phatty style: every time osc 1 completes a
-            // cycle, restart osc 2's cycle too, locking their pitches together
-            if (sync && osc1Wrapped && type2 > 0)
-            {
-                // Land the reset at the same fractional-sample offset osc 1
-                // wrapped at, rather than always exactly on a sample boundary
-                const double wrapFrac    = (newPhase1 - twoPi) / phaseDelta;
-                const double resetPhase2 = wrapFrac * phaseDelta2;
-
-                const double before = waveSample (type2 - 1, phase2 / twoPi, dt2);
-                const double after  = waveSample (type2 - 1, resetPhase2 / twoPi, dt2);
-                syncDeclick += before - after;
-
-                phase2 = resetPhase2;
-            }
-            else
-            {
-                phase2 = std::fmod (phase2 + phaseDelta2, twoPi);
-            }
+            advanceIdle (numSamples);
+            return;
         }
-
-        if (! adsr.isActive())
+        updateControls (false);
+        updateEnvelopes();
+        advanceUnusedDrift (numSamples * 4);
+        const bool mono = count[0] == 1 && count[1] == 1;
+        const double maxCutoff = getSampleRate() * 0.45;
+        for (int n = 0; n < numSamples * 4; ++n)
         {
-            active = false;
-            clearCurrentNote();
+            updateMotion();
+            updatePan();
+            double step[2][kMaxUnisonVoices] {};
+            oscillatorSteps (step);
+            const double syncTime = syncEnabled && oscillators[0][0].wave.getPhase() + step[0][0] >= 1
+                ? (1 - oscillators[0][0].wave.getPhase()) / step[0][0] : -1;
+            float mixed[2] {};
+            for (int bank = 0; bank < 2; ++bank)
+            {
+                syngen::BandlimitedOscillator::Mix mix;
+                mix.sine = waveMix[bank][0].getNextValue();
+                mix.saw = waveMix[bank][1].getNextValue();
+                mix.pulse = waveMix[bank][2].getNextValue();
+                mix.triangle = waveMix[bank][3].getNextValue();
+                mix.sub = waveMix[bank][4].getNextValue();
+                const double pulseWidth = width[bank].getNextValue();
+                const float bankGain = gain[bank] * (float) level[bank].getNextValue();
+                for (int u = 0; u < count[bank]; ++u)
+                {
+                    auto& osc = oscillators[bank][u];
+                    const float sample = (float) osc.wave.next (step[bank][u], mix, pulseWidth,
+                                                               bank == 1 ? syncTime : -1) * bankGain;
+                    mixed[0] += sample * osc.panLeft;
+                    mixed[1] += sample * osc.panRight;
+                }
+            }
+            const double tracking = trackingSmooth.getNextValue()
+                * std::log2 (glide.getFrequency() / 261.6255653005986);
+            const double cutoff = juce::jlimit (20.0, maxCutoff, cutoffSmooth.getNextValue()
+                * std::exp2 (envAmountSmooth.getNextValue() * filterEnvelope.next() + tracking));
+            const double G = syngen::FeedbackLadder::coefficient (cutoff, renderRate);
+            const double resonance = (resonanceSmooth.getNextValue() - 0.5) * (4.2 / 9.5);
+            const float drive = (float) (1 + 7 * driveSmooth.getNextValue());
+            const double compensation = compensationSmooth.getNextValue();
+            const float vca = ampEnvelope.next() * (float) glide.getLevel() / std::sqrt (drive);
+            float outL = ladder[0].process (mixed[0] * 0.3f * drive, G, resonance, compensation) * vca;
+            float outR = mono ? outL : ladder[1].process (mixed[1] * 0.3f * drive, G, resonance, compensation) * vca;
+            decimator[0].push (outL);
+            if (! mono) decimator[1].push (outR);
+            if (n % 4 == 3)
+            {
+                outL = decimator[0].output();
+                outR = mono ? outL : decimator[1].output();
+                const int sample = startSample + n / 4;
+                if (buffer.getNumChannels() == 1)
+                    buffer.addSample (0, sample, 0.5f * (outL + outR));
+                else if (buffer.getNumChannels() >= 2)
+                {
+                    buffer.addSample (0, sample, outL * 0.70710678f);
+                    buffer.addSample (1, sample, outR * 0.70710678f);
+                    for (int ch = 2; ch < buffer.getNumChannels(); ++ch)
+                        buffer.addSample (ch, sample, 0.5f * (outL + outR));
+                }
+                if (! ampEnvelope.isActive() && --tailSamples <= 0)
+                {
+                    active = false;
+                    clearCurrentNote();
+                    advanceIdle (numSamples - n / 4 - 1, false);
+                    return;
+                }
+            }
         }
     }
 
-    // Pitch bend is read from the shared pitchBend atomic in renderNextBlock
-    // instead (see PluginProcessor::processBlock), so this stays a no-op
     void pitchWheelMoved (int) override {}
     void controllerMoved (int, int) override {}
 
 private:
-    // Smooths a waveform discontinuity over one sample either side so it
-    // doesn't alias. t = normalised phase [0,1), dt = increment per sample.
-    static double polyBlep (double t, double dt)
+    template <typename T> static T read (std::atomic<T>* parameter, T fallback)
     {
-        if (t < dt)
+        return parameter ? parameter->load() : fallback;
+    }
+    // Float overload permits concise, integer-valued defaults for float params.
+    static double read (std::atomic<float>* parameter, int fallback)
+    {
+        return parameter ? (double) parameter->load() : fallback;
+    }
+    template <typename S> static void target (S& smoother, double value, bool initialise)
+    {
+        if (initialise) smoother.setCurrentAndTargetValue (value);
+        else smoother.setTargetValue (value);
+    }
+    void updateControls (bool initialise)
+    {
+        syncEnabled = read (oscSync, false);
+        const double pitch = read (pitchSemitones, 0) + read (pitchBend, 0);
+        const double detune[] = { read (osc1UnisonDetune, 14), read (osc2UnisonDetune, 14) };
+        target (tuning[0], pitch + 12 * (read (osc1Octave, 1) - 1), initialise);
+        target (tuning[1], pitch + 12 * (read (osc2Octave, 1) - 1)
+                          + read (osc2Coarse, 0) + read (detuneCents, 0) * 0.01, initialise);
+        target (level[0], read (osc1Level, 0.75f), initialise);
+        target (level[1], read (osc2Level, 0.75f), initialise);
+        target (stereoWidth, read (unisonWidth, 0.9f), initialise);
+        target (driftDepth, read (driftAmount, 1), initialise);
+        target (cutoffSmooth, read (cutoffHz, 20000), initialise);
+        target (resonanceSmooth, read (resonanceQ, 0.707f), initialise);
+        target (driveSmooth, read (overloadAmount, 0), initialise);
+        target (compensationSmooth, read (filterCompensation, 0.5f), initialise);
+        target (envAmountSmooth, read (envAmountOct, 0), initialise);
+        target (trackingSmooth, read (kbTrackAmount, 0), initialise);
+        const bool modern[] = { read (osc1ModernOn, false), read (osc2ModernOn, false) };
+        const int wave[] = { read (oscType, 0), read (osc2Type, 0) - 1 };
+        const double saw[] = { read (osc1SawMix, 1), read (osc2SawMix, 1) };
+        const double pulse[] = { read (osc1PulseMix, 0), read (osc2PulseMix, 0) };
+        const double triangle[] = { read (osc1TriMix, 0), read (osc2TriMix, 0) };
+        const bool sub[] = { read (osc1SubOctave, false), read (osc2SubOctave, false) };
+        const double pw[] = { read (osc1PulseWidth, 0.5f), read (osc2PulseWidth, 0.5f) };
+        for (int bank = 0; bank < 2; ++bank)
         {
-            auto x = t / dt;
-            return x + x - x * x - 1.0;
+            double weights[5] {};
+            if (modern[bank]) { weights[1] = saw[bank]; weights[2] = pulse[bank]; weights[3] = triangle[bank]; weights[4] = sub[bank] ? 0.6 : 0; }
+            else if (wave[bank] >= 0 && wave[bank] <= 3) weights[wave[bank]] = 1;
+            for (int w = 0; w < 5; ++w) target (waveMix[bank][w], weights[w], initialise);
+            target (width[bank], modern[bank] ? pw[bank] : 0.5, initialise);
+            for (int u = 0; u < count[bank]; ++u)
+                target (oscillators[bank][u].detune, std::exp2 (oscillators[bank][u].spread * detune[bank] / 1200), initialise);
         }
-        if (t > 1.0 - dt)
+    }
+    void updateEnvelopes()
+    {
+        const double curve = read (envelopeCurve, 0.65f);
+        ampEnvelope.setParameters (read (attackSeconds, 0.01f), read (decaySeconds, 0.1f),
+                                   read (sustainLevel, 0.7f), read (releaseSeconds, 0.05f), curve);
+        filterEnvelope.setParameters (read (fltAttack, 0.005f), read (fltDecay, 0.25f),
+                                      read (fltSustain, 0.2f), read (fltRelease, 0.1f), curve);
+    }
+    void updateMotion()
+    {
+        glide.next();
+        for (int bank = 0; bank < 2; ++bank)
         {
-            auto x = (t - 1.0) / dt;
-            return x * x + x + x + 1.0;
+            const double semitones = tuning[bank].getNextValue();
+            if (semitones != cachedTuning[bank])
+            {
+                cachedTuning[bank] = semitones;
+                tuningRatio[bank] = std::exp2 (semitones / 12);
+            }
         }
-        return 0.0;
+    }
+    void updatePan()
+    {
+        const double widthNow = stereoWidth.getNextValue();
+        if (widthNow == cachedWidth) return;
+        cachedWidth = widthNow;
+        for (int bank = 0; bank < 2; ++bank)
+            for (int u = 0; u < count[bank]; ++u)
+            {
+                auto& osc = oscillators[bank][u];
+                const double angle = (osc.spread * widthNow + 1) * juce::MathConstants<double>::pi * 0.25;
+                osc.panLeft = count[bank] == 1 ? 1.0f : (float) std::cos (angle);
+                osc.panRight = count[bank] == 1 ? 1.0f : (float) std::sin (angle);
+            }
+    }
+    void oscillatorSteps (double (&steps)[2][kMaxUnisonVoices])
+    {
+        const double common = 0.3 * commonDrift.next();
+        const double amount = driftDepth.getNextValue();
+        for (int bank = 0; bank < 2; ++bank)
+            for (int u = 0; u < count[bank]; ++u)
+            {
+                auto& osc = oscillators[bank][u];
+                const double cents = amount * (common + 2.0 * osc.drift.next());
+                // exp(x), within 3e-10 relative error over this bounded drift.
+                const double x = cents * (0.6931471805599453 / 1200);
+                const double driftRatio = 1 + x * (1 + 0.5 * x);
+                steps[bank][u] = juce::jlimit (1e-9, 0.45,
+                    glide.getFrequency() * tuningRatio[bank] * osc.detune.getNextValue() * driftRatio / renderRate);
+            }
+    }
+    void advanceUnusedDrift (int samples)
+    {
+        for (int bank = 0; bank < 2; ++bank)
+            for (int u = count[bank]; u < kMaxUnisonVoices; ++u)
+                oscillators[bank][u].drift.advance (samples);
+    }
+    void advanceIdle (int hostSamples, bool advanceUnused = true)
+    {
+        if (! phaseInitialised || hostSamples <= 0) return;
+        const int samples = hostSamples * 4;
+        if (phaseMode[0] != 2 && phaseMode[1] != 2)
+        {
+            commonDrift.advance (samples);
+            for (int bank = 0; bank < 2; ++bank)
+                for (int u = 0; u < (advanceUnused ? kMaxUnisonVoices : count[bank]); ++u)
+                    oscillators[bank][u].drift.advance (samples);
+            return;
+        }
+        if (advanceUnused) advanceUnusedDrift (samples);
+        for (int n = 0; n < samples; ++n)
+        {
+            updateMotion();
+            double steps[2][kMaxUnisonVoices] {};
+            oscillatorSteps (steps);
+            const double syncTime = syncEnabled && oscillators[0][0].wave.getPhase() + steps[0][0] >= 1
+                ? (1 - oscillators[0][0].wave.getPhase()) / steps[0][0] : -1;
+            for (int bank = 0; bank < 2; ++bank)
+                for (int u = 0; u < count[bank]; ++u)
+                    oscillators[bank][u].wave.advance (steps[bank][u], bank == 1 ? syncTime : -1);
+        }
     }
 
-    // Smooths a slope discontinuity (a corner, rather than a jump) the same
-    // way: this is polyBlep's antiderivative, scaled by dt on use so its
-    // corrected triangle's derivative matches the polyBlep-corrected square.
-    static double polyBlamp (double t, double dt)
+    struct Oscillator
     {
-        if (t < dt)
-        {
-            auto x = t / dt - 1.0;
-            return -1.0 / 3.0 * x * x * x;
-        }
-        if (t > 1.0 - dt)
-        {
-            auto x = (t - 1.0) / dt + 1.0;
-            return 1.0 / 3.0 * x * x * x;
-        }
-        return 0.0;
-    }
-
-    static double waveSample (int type, double t, double dt)
-    {
-        switch (type)
-        {
-            case 1:  return (1.0 - 2.0 * t) + polyBlep (t, dt);   // Sawtooth
-            case 2:  return (t < 0.5 ? 1.0 : -1.0)                 // Square
-                        + polyBlep (t, dt)
-                        - polyBlep (std::fmod (t + 0.5, 1.0), dt);
-            case 3:  return (t < 0.5                               // Triangle
-                        ? (4.0 * t - 1.0)
-                        : (3.0 - 4.0 * t))
-                        + 4.0 * dt * (polyBlamp (t, dt)
-                                     - polyBlamp (std::fmod (t + 0.5, 1.0), dt));
-            default: return std::sin (t * juce::MathConstants<double>::twoPi);
-        }
-    }
-
-    juce::ADSR adsr;
-    juce::ADSR filterEnv;
-    juce::dsp::StateVariableTPTFilter<float> filter[2];
-    double frequency = 440.0;
-    double amplitude = 0.0;
-    double phase     = 0.0;
-    double phase2    = 0.0;
-    double syncDeclick = 0.0;
-    double drift     = 1.0;
-    bool   active    = false;
+        syngen::BandlimitedOscillator wave;
+        syngen::SmoothDrift drift;
+        juce::SmoothedValue<double, juce::ValueSmoothingTypes::Multiplicative> detune;
+        double spread = 0;
+        float panLeft = 1, panRight = 1;
+    } oscillators[2][kMaxUnisonVoices];
+    syngen::SmoothDrift commonDrift;
+    syngen::PitchGlide glide;
+    juce::Random random;
+    uint32_t motionSeed = (uint32_t) random.nextInt();
+    double renderRate = 176400, motionRate = 0;
+    bool active = false, phaseInitialised = false, syncEnabled = false;
+    int count[2] { 1, 1 }, phaseMode[2] {}, tailSamples = 33;
+    float gain[2] { 1, 1 };
+    double cachedTuning[2] {}, tuningRatio[2] { 1, 1 }, cachedWidth = -1;
+    juce::SmoothedValue<double> waveMix[2][5], width[2], tuning[2], level[2];
+    juce::SmoothedValue<double> stereoWidth, driftDepth, resonanceSmooth, driveSmooth, compensationSmooth;
+    juce::SmoothedValue<double> envAmountSmooth, trackingSmooth;
+    juce::SmoothedValue<double, juce::ValueSmoothingTypes::Multiplicative> cutoffSmooth;
+    syngen::FeedbackLadder ladder[2];
+    syngen::Decimator4 decimator[2];
+    syngen::CurveEnvelope ampEnvelope, filterEnvelope;
 };

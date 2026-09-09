@@ -42,9 +42,14 @@ public:
             // visible button size now, unlike the padded source artwork.
             // 10% larger than the original 24px icon.
             constexpr float iconSize = 24.0f * 1.10f;
-            auto iconArea = getLocalBounds().withTrimmedTop (22);
+            // LabeledKnob's rotary art sits top-aligned under its title
+            // rather than centred in the whole box below it (see
+            // OscKnobLookAndFeel::drawRotarySlider); matching that here
+            // keeps a toggle in the same row lined up with the knobs
+            // beside it instead of sitting visibly lower.
+            const float centreY = 22.0f + juce::jmax (0.0f, (float) getHeight() - 50.0f) * 0.5f;
             auto iconRect = juce::Rectangle<float> (iconSize, iconSize)
-                                .withCentre (iconArea.getCentre().toFloat());
+                                .withCentre ({ getWidth() * 0.5f, centreY });
             g.drawImage (img, iconRect, juce::RectanglePlacement::centred);
         }
     }
