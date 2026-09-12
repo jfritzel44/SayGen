@@ -11,7 +11,6 @@
 #include "SyncToggleButton.h"
 #include "Oscilloscope.h"
 #include "VelocityCurveEditor.h"
-#include "ModernOscEditor.h"
 
 // The editor is a thin resizable shell around Content, which draws/lays out
 // at a fixed design resolution. The shell scales Content uniformly to fill
@@ -110,12 +109,6 @@ private:
         // toggled in and out of view rather than living in the fixed layout
         juce::TextButton velocityButton { "VELOCITY" };
         VelocityCurveEditor velocityPanel;
-
-        // Modern oscillator mix: same overlay pattern as velocity, for the
-        // saw/pulse/triangle/width/sub controls that don't fit in the main
-        // oscillator row
-        juce::TextButton modernOscButton { "OSC MIX" };
-        ModernOscEditor modernOscPanel;
 
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Content)
     };

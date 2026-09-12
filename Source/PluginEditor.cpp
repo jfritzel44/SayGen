@@ -43,8 +43,7 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
       fltReleaseKnob (p.apvts, "fltRelease", "Release",  &oscLookAndFeel),
       lfoRateKnob    (p.apvts, "lfoRate",    "LFO Rate", &oscLookAndFeel),
       lfoAmountKnob  (p.apvts, "lfoAmount",  "Amount",   &oscLookAndFeel),
-      velocityPanel  (p.apvts),
-      modernOscPanel (p.apvts, &oscLookAndFeel)
+      velocityPanel  (p.apvts)
 {
     sectionTitleTypeface = juce::Typeface::createSystemTypefaceFor (
         BinaryData::EurostileExtendedBlack_ttf, BinaryData::EurostileExtendedBlack_ttfSize);
@@ -191,27 +190,14 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
     velocityButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     velocityButton.onClick = [this]
     {
-        // The two overlays share the same screen area, so opening one
-        // closes the other rather than letting them stack
-        modernOscPanel.setVisible (false);
         velocityPanel.setVisible (! velocityPanel.isVisible());
     };
     addAndMakeVisible (velocityButton);
 
-    modernOscButton.setColour (juce::TextButton::buttonColourId, panelColour);
-    modernOscButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
-    modernOscButton.onClick = [this]
-    {
-        velocityPanel.setVisible (false);
-        modernOscPanel.setVisible (! modernOscPanel.isVisible());
-    };
-    addAndMakeVisible (modernOscButton);
-
-    // Added last so they draw/receive clicks on top of everything they
-    // overlap; start hidden since they're overlays, not part of the
+    // Added last so it draws/receives clicks on top of everything it
+    // overlaps; starts hidden since it's an overlay, not part of the
     // always-visible layout
     addChildComponent (velocityPanel);
-    addChildComponent (modernOscPanel);
 }
 
 MySynthAudioProcessorEditor::Content::~Content()
@@ -492,9 +478,6 @@ void MySynthAudioProcessorEditor::Content::resized()
     // Modulation), rather than taking up permanent space in the layout
     velocityButton.setBounds (930, 8, 90, 24);
     velocityPanel.setBounds  (20, 286, 1000, 342);
-
-    modernOscButton.setBounds (826, 8, 90, 24);
-    modernOscPanel.setBounds  (20, 286, 1000, 342);
 }
 
 //==============================================================================

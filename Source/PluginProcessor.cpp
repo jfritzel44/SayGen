@@ -47,48 +47,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
         juce::NormalisableRange<float> (-50.0f, 50.0f, 0.1f), 7.0f));
 
     // Stacks this many detuned copies of each oscillator (fixed spread, see
-    // MySynthAudioProcessor::unisonDetuneCents) for a wider, chorused tone;
+    // MySynthVoice::kUnisonDetuneCents) for a wider, chorused tone;
     // 1 = off, matching the original single-oscillator behaviour exactly
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         "unisonVoices", "Unison",
         juce::NormalisableRange<float> (1.0f, (float) MySynthVoice::kMaxUnisonVoices, 1.0f), 1.0f));
 
-    // "Modern" oscillator: continuous saw/pulse/triangle mix + sub-octave,
-    // independent per oscillator, in place of oscType/osc2Type's single-
-    // waveform pick when its "on" toggle is enabled. Lives in its own
-    // overlay panel rather than the (already full) main oscillator row.
-    auto addModernOscParams = [&layout] (const juce::String& prefix, const juce::String& label)
-    {
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            prefix + "ModernOn", label + " Modern", false));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            prefix + "SawMix", label + " Modern Saw",
-            juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 1.0f));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            prefix + "PulseMix", label + " Modern Pulse",
-            juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            prefix + "TriMix", label + " Modern Triangle",
-            juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            prefix + "PulseWidth", label + " Modern Width",
-            juce::NormalisableRange<float> (0.02f, 0.98f, 0.01f), 0.5f));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            prefix + "SubOctave", label + " Modern Sub", false));
-    };
-    addModernOscParams ("osc1", "Oscillator 1");
-    addModernOscParams ("osc2", "Oscillator 2");
-
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         "pitch", "Pitch",
         juce::NormalisableRange<float> (-24.0f, 24.0f, 1.0f), 0.0f));
-
-    // Analog-style pitch instability (see MySynthVoice::renderNextBlock):
-    // 0 = perfectly stable, 1 = full drift (the default every existing
-    // preset was authored against)
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        "driftAmount", "Drift",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 1.0f));
 
     // Glide (portamento): forces single-note mono voicing (see
     // MySynthAudioProcessor::applyGlideVoicing) and slides the pitch of a
@@ -327,38 +294,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
         "velocityCurve", "Velocity Curve",
         juce::NormalisableRange<float> (-1.0f, 1.0f, 0.01f), 0.0f));
 
-    // Appended to preserve existing host parameter indices.
-    for (auto id : { "osc1Level", "osc2Level" })
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            id, juce::String (id) == "osc1Level" ? "Oscillator 1 Level" : "Oscillator 2 Level",
-            juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.75f));
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        "filterCompensation", "Filter Bass Compensation",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f));
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        "envelopeCurve", "Envelope Curve",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.65f));
-    for (auto prefix : { juce::String ("osc1"), juce::String ("osc2") })
-    {
-        layout.add (std::make_unique<juce::AudioParameterChoice> (
-            prefix + "PhaseMode", prefix + " Phase Mode",
-            juce::StringArray { "Retrigger", "Random", "Free" }, 0));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            prefix + "StartPhase", prefix + " Start Phase",
-            juce::NormalisableRange<float> (0.0f, 360.0f, 0.1f), prefix == "osc1" ? 0.0f : 90.0f));
-    }
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        "phaseRandomness", "Phase Randomness",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 1.0f));
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        "unisonSpread", "Unison Detune",
-        juce::NormalisableRange<float> (0.0f, 50.0f, 0.1f), 14.0f));
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        "unisonWidth", "Unison Width",
-        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.9f));
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        "osc2Coarse", "Oscillator 2 Coarse Tune",
-        juce::NormalisableRange<float> (-24.0f, 24.0f, 1.0f), 0.0f));
     return layout;
 }
 
@@ -430,13 +365,6 @@ void MySynthAudioProcessor::setCurrentProgram (int index)
 
     currentProgram = index;
 
-    // Reset optional sound controls so patches cannot inherit another patch's settings.
-    for (auto id : { "osc1Level", "osc2Level", "filterCompensation", "envelopeCurve",
-                     "osc1PhaseMode", "osc2PhaseMode", "osc1StartPhase", "osc2StartPhase",
-                     "phaseRandomness", "unisonSpread", "unisonWidth", "osc2Coarse" })
-        if (auto* param = apvts.getParameter (id))
-            param->setValueNotifyingHost (param->getDefaultValue());
-
     for (auto& [paramID, value] : presets[(size_t) index].values)
         if (auto* param = apvts.getParameter (paramID))
             param->setValueNotifyingHost (param->convertTo0to1 (value));
@@ -456,16 +384,11 @@ void MySynthAudioProcessor::saveCurrentPatchAsPreset (const juce::String& name)
     // factory presets in Presets.h capture (oscillators, envelopes, filter)
     static const char* patchParamIDs[] =
     {
-        "oscType", "osc2Type", "osc1Octave", "osc2Octave", "detune", "unisonVoices", "pitch", "driftAmount",
-        "osc1ModernOn", "osc1SawMix", "osc1PulseMix", "osc1TriMix", "osc1PulseWidth", "osc1SubOctave",
-        "osc2ModernOn", "osc2SawMix", "osc2PulseMix", "osc2TriMix", "osc2PulseWidth", "osc2SubOctave",
+        "oscType", "osc2Type", "osc1Octave", "osc2Octave", "detune", "unisonVoices", "pitch",
         "attack", "decay", "sustain", "release",
         "cutoff", "resonance", "envAmount",
         "fltAttack", "fltDecay", "fltSustain", "fltRelease",
         "glideOn", "glideTime", "overload", "kbAmount",
-        "osc1Level", "osc2Level", "filterCompensation", "envelopeCurve",
-        "osc1PhaseMode", "osc2PhaseMode", "osc1StartPhase", "osc2StartPhase",
-        "phaseRandomness", "unisonSpread", "unisonWidth", "osc2Coarse",
     };
 
     Preset preset;
@@ -496,17 +419,6 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     for (int i = 0; i < 8; ++i)
     {
         auto* voice = new MySynthVoice();
-        voice->osc1PhaseMode = &osc1PhaseMode;
-        voice->osc2PhaseMode = &osc2PhaseMode;
-        voice->osc1StartPhase = &osc1StartPhase;
-        voice->osc2StartPhase = &osc2StartPhase;
-        voice->phaseRandomness = &phaseRandomness;
-        voice->unisonWidth = &unisonWidth;
-        voice->osc2Coarse = &osc2Coarse;
-        voice->osc1Level = &osc1Level;
-        voice->osc2Level = &osc2Level;
-        voice->filterCompensation = &filterCompensation;
-        voice->envelopeCurve = &envelopeCurve;
         voice->oscType        = &oscType;
         voice->osc2Type       = &osc2Type;
         voice->osc1Octave     = &osc1Octave;
@@ -515,20 +427,6 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
         voice->detuneCents    = &detuneCents;
         voice->osc1UnisonVoices = &unisonVoices;
         voice->osc2UnisonVoices = &unisonVoices;
-        voice->osc1UnisonDetune = &unisonDetuneCents;
-        voice->osc2UnisonDetune = &unisonDetuneCents;
-        voice->osc1ModernOn    = &osc1ModernOn;
-        voice->osc1SawMix      = &osc1SawMix;
-        voice->osc1PulseMix    = &osc1PulseMix;
-        voice->osc1TriMix      = &osc1TriMix;
-        voice->osc1PulseWidth  = &osc1PulseWidth;
-        voice->osc1SubOctave   = &osc1SubOctave;
-        voice->osc2ModernOn    = &osc2ModernOn;
-        voice->osc2SawMix      = &osc2SawMix;
-        voice->osc2PulseMix    = &osc2PulseMix;
-        voice->osc2TriMix      = &osc2TriMix;
-        voice->osc2PulseWidth  = &osc2PulseWidth;
-        voice->osc2SubOctave   = &osc2SubOctave;
         voice->pitchSemitones = &pitchSemitones;
         voice->attackSeconds  = &attackSeconds;
         voice->decaySeconds   = &decaySeconds;
@@ -545,7 +443,6 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
         voice->kbTrackAmount  = &kbTrackAmount;
         voice->velocityCurve  = &velocityCurveAmount;
         voice->pitchBend      = &pitchBendSemitones;
-        voice->driftAmount    = &driftAmount;
         synth.addVoice (voice);
     }
 
@@ -726,19 +623,6 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
-    osc1PhaseMode.store ((int) apvts.getRawParameterValue ("osc1PhaseMode")->load());
-    osc2PhaseMode.store ((int) apvts.getRawParameterValue ("osc2PhaseMode")->load());
-    osc1StartPhase.store (apvts.getRawParameterValue ("osc1StartPhase")->load());
-    osc2StartPhase.store (apvts.getRawParameterValue ("osc2StartPhase")->load());
-    phaseRandomness.store (apvts.getRawParameterValue ("phaseRandomness")->load());
-    unisonDetuneCents.store (apvts.getRawParameterValue ("unisonSpread")->load());
-    unisonWidth.store (apvts.getRawParameterValue ("unisonWidth")->load());
-    osc2Coarse.store (apvts.getRawParameterValue ("osc2Coarse")->load());
-    osc1Level.store (apvts.getRawParameterValue ("osc1Level")->load());
-    osc2Level.store (apvts.getRawParameterValue ("osc2Level")->load());
-    filterCompensation.store (apvts.getRawParameterValue ("filterCompensation")->load());
-    envelopeCurve.store (apvts.getRawParameterValue ("envelopeCurve")->load());
-
     // Sync parameters to atomics read by voices
     oscType.store ((int)std::round (apvts.getRawParameterValue ("oscType")->load()));
     osc2Type.store ((int)std::round (apvts.getRawParameterValue ("osc2Type")->load()));
@@ -746,21 +630,8 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     osc2Octave.store ((int)std::round (apvts.getRawParameterValue ("osc2Octave")->load()));
     oscSync.store (apvts.getRawParameterValue ("oscSync")->load() >= 0.5f);
     detuneCents.store (apvts.getRawParameterValue ("detune")->load());
-    driftAmount.store (apvts.getRawParameterValue ("driftAmount")->load());
     unisonVoices.store ((int) std::round (apvts.getRawParameterValue ("unisonVoices")->load()));
 
-    osc1ModernOn.store   (apvts.getRawParameterValue ("osc1ModernOn")->load() >= 0.5f);
-    osc1SawMix.store     (apvts.getRawParameterValue ("osc1SawMix")->load());
-    osc1PulseMix.store   (apvts.getRawParameterValue ("osc1PulseMix")->load());
-    osc1TriMix.store     (apvts.getRawParameterValue ("osc1TriMix")->load());
-    osc1PulseWidth.store (apvts.getRawParameterValue ("osc1PulseWidth")->load());
-    osc1SubOctave.store  (apvts.getRawParameterValue ("osc1SubOctave")->load() >= 0.5f);
-    osc2ModernOn.store   (apvts.getRawParameterValue ("osc2ModernOn")->load() >= 0.5f);
-    osc2SawMix.store     (apvts.getRawParameterValue ("osc2SawMix")->load());
-    osc2PulseMix.store   (apvts.getRawParameterValue ("osc2PulseMix")->load());
-    osc2TriMix.store     (apvts.getRawParameterValue ("osc2TriMix")->load());
-    osc2PulseWidth.store (apvts.getRawParameterValue ("osc2PulseWidth")->load());
-    osc2SubOctave.store  (apvts.getRawParameterValue ("osc2SubOctave")->load() >= 0.5f);
     attackSeconds.store (apvts.getRawParameterValue ("attack")->load());
     decaySeconds.store (apvts.getRawParameterValue ("decay")->load());
     sustainLevel.store (apvts.getRawParameterValue ("sustain")->load());

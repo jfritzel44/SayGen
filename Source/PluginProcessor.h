@@ -12,11 +12,6 @@ public:
     MySynthAudioProcessor();
     ~MySynthAudioProcessor() override;
 
-    std::atomic<int> osc1PhaseMode { 0 }, osc2PhaseMode { 0 };
-    std::atomic<float> osc1StartPhase { 0 }, osc2StartPhase { 90 }, phaseRandomness { 1 };
-    std::atomic<float> unisonWidth { 0.9f }, osc2Coarse { 0 };
-    std::atomic<float> osc1Level { 0.75f }, osc2Level { 0.75f };
-    std::atomic<float> filterCompensation { 0.5f }, envelopeCurve { 0.65f };
     std::atomic<bool>  midiActivity   { false };
     std::atomic<int>   oscType        { 0 };
     std::atomic<int>   osc2Type       { 0 };
@@ -32,23 +27,7 @@ public:
     std::atomic<float> resonanceQ     { 0.707f };
     std::atomic<float> detuneCents    { 7.0f };
     std::atomic<int>   unisonVoices      { 1 };      // shared by both oscillators, 1..MySynthVoice::kMaxUnisonVoices
-    std::atomic<float> unisonDetuneCents { 14.0f };  // fixed per-oscillator unison spread, not user-adjustable
 
-    // "Modern" oscillator mode: continuous saw/pulse/triangle mix + sub-
-    // octave, independent per oscillator, overriding oscType/osc2Type's
-    // single-waveform pick while on. See MySynthVoice for the DSP.
-    std::atomic<bool>  osc1ModernOn   { false };
-    std::atomic<float> osc1SawMix     { 1.0f };
-    std::atomic<float> osc1PulseMix   { 0.0f };
-    std::atomic<float> osc1TriMix     { 0.0f };
-    std::atomic<float> osc1PulseWidth { 0.5f };
-    std::atomic<bool>  osc1SubOctave  { false };
-    std::atomic<bool>  osc2ModernOn   { false };
-    std::atomic<float> osc2SawMix     { 1.0f };
-    std::atomic<float> osc2PulseMix   { 0.0f };
-    std::atomic<float> osc2TriMix     { 0.0f };
-    std::atomic<float> osc2PulseWidth { 0.5f };
-    std::atomic<bool>  osc2SubOctave  { false };
     std::atomic<float> envAmountOct   { 2.0f };
     std::atomic<float> fltAttack      { 0.005f };
     std::atomic<float> fltDecay       { 0.25f };
@@ -58,7 +37,6 @@ public:
     std::atomic<float> kbTrackAmount  { 0.0f };
     std::atomic<float> velocityCurveAmount { 0.0f };
     std::atomic<float> pitchBendSemitones  { 0.0f };
-    std::atomic<float> driftAmount         { 1.0f };  // 0 = perfectly stable, 1 = full analog-style drift
     std::atomic<bool>  glideOn         { false };
     std::atomic<float> glideTimeSeconds{ 0.08f };
 

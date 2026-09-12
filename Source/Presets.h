@@ -377,7 +377,6 @@ inline const std::vector<Preset>& getFactoryPresets()
               { "osc2Octave",    1.0f },   // 8'
               { "unisonVoices",  3.0f },
               { "pitch",         0.0f },
-              { "driftAmount",   0.0f },   // matches the original patch's own Drift = 0
               { "attack",        0.003f },
               { "decay",         0.08f },
               { "sustain",       1.0f },
