@@ -175,6 +175,14 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
         box.setColour (juce::ComboBox::arrowColourId,      juce::Colours::white);
     };
 
+    filterModeBox.addItemList ({ "LP 24", "LP 12", "BP 24", "BP 12", "HP 24", "HP 12", "Notch" }, 1);
+    styleComboBox (filterModeBox);
+    filterModeBox.setTooltip ("Which taps of the ladder are mixed to the output. The filter core, "
+                              "its drive and its resonance are the same in every mode.");
+    filterModeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        (p.apvts, "filterMode", filterModeBox);
+    addAndMakeVisible (filterModeBox);
+
     lfoSourceBox.addItemList ({ "Sine", "Triangle", "Square", "Saw", "S&H" }, 1);
     styleComboBox (lfoSourceBox);
     lfoSourceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
@@ -221,6 +229,7 @@ MySynthAudioProcessorEditor::Content::~Content()
     stopTimer();
 
     presetBox.setLookAndFeel (nullptr);
+    filterModeBox.setLookAndFeel (nullptr);
     lfoSourceBox.setLookAndFeel (nullptr);
     lfoDestBox.setLookAndFeel (nullptr);
 }
@@ -507,6 +516,9 @@ void MySynthAudioProcessorEditor::Content::resized()
     // Filter section: cutoff/resonance/glide across the top row, and their
     // envelope counterparts directly below in the same four columns, so
     // Cutoff lines up with Attack and Resonance lines up with Decay.
+    // Mode sits in the panel's header row, right of the centred "Filter"
+    // title, so the two knob rows below keep their full size.
+    filterModeBox.setBounds (486, 421, 110, 21);
     constexpr int filterColWidth = 460 / 4;
     juce::Rectangle<int> filterRow (150, 442, 460, 88);
     cutoffKnob.setBounds    (filterRow.removeFromLeft (filterColWidth));

@@ -23,6 +23,12 @@ struct MySynthVoice : public juce::SynthesiserVoice
     std::atomic<float>* osc1Level = nullptr;
     std::atomic<float>* osc2Level = nullptr;
     std::atomic<float>* filterCompensation = nullptr;
+    std::atomic<int>*   filterMode     = nullptr;  // syngen::FeedbackLadder::Mode
+    std::atomic<float>* pwmDepth       = nullptr;  // pulse-width modulation depth, 0..1
+    std::atomic<float>* pwmRate        = nullptr;  // pulse-width modulation rate, Hz
+    std::atomic<float>* noiseLevel     = nullptr;  // noise summed into the filter input, 0..1
+    std::atomic<float>* noiseColour    = nullptr;  // 0 pink, 1 white
+    std::atomic<float>* ringModLevel   = nullptr;  // osc 1 x osc 2, summed alongside them
     std::atomic<float>* envelopeCurve = nullptr;
     std::atomic<int>*   oscType        = nullptr;
     std::atomic<int>*   osc2Type       = nullptr;  // 0 = off, 1..4 = waveform
@@ -100,6 +106,7 @@ struct MySynthVoice : public juce::SynthesiserVoice
         {
             motionRate = renderRate;
             commonDrift.prepare (renderRate, motionSeed);
+            noise.prepare (renderRate, motionSeed + 104729u);
             for (int bank = 0; bank < 2; ++bank)
                 for (int u = 0; u < kMaxUnisonVoices; ++u)
                     oscillators[bank][u].drift.prepare (renderRate, motionSeed + 7919u * (1 + bank * 7 + u));
@@ -147,6 +154,11 @@ struct MySynthVoice : public juce::SynthesiserVoice
                 // A muted interval advances phase without computing BLEP tails.
                 osc.wave.clearCorrection();
                 osc.detune.reset (renderRate, 0.01);
+                // Scatter the width modulators too. If every unison voice
+                // swept its pulse in lockstep the stack would just get wider
+                // and narrower together; offset, they beat against each other,
+                // which is the whole point of PWM on a stacked patch.
+                osc.pwm.reset (unisonPhase (u, bank) + 0.37 * bank);
             }
             for (auto& mix : waveMix[bank]) mix.reset (renderRate, 0.005);
             width[bank].reset (renderRate, 0.005);
@@ -158,6 +170,11 @@ struct MySynthVoice : public juce::SynthesiserVoice
         stereoWidth.reset (renderRate, 0.01);
         driftDepth.reset (renderRate, 0.02);
         cutoffSmooth.reset (renderRate, 0.005);
+        pwmDepthSmooth.reset (renderRate, 0.01);
+        noiseLevelSmooth.reset (renderRate, 0.01);
+        noiseColourSmooth.reset (renderRate, 0.02);
+        ringSmooth.reset (renderRate, 0.01);
+        for (auto& weight : filterMix) weight.reset (renderRate, 0.01);
         resonanceSmooth.reset (renderRate, 0.01);
         driveSmooth.reset (renderRate, 0.01);
         compensationSmooth.reset (renderRate, 0.01);
@@ -170,6 +187,7 @@ struct MySynthVoice : public juce::SynthesiserVoice
         for (auto& b : blocker) b.prepare (renderRate);
         if (! continuing)
         {
+            noise.reset();
             for (auto& filter : ladder) filter.reset();
             for (auto& b : blocker) b.reset();
             for (auto& d : decimator) d.reset();
@@ -226,6 +244,8 @@ struct MySynthVoice : public juce::SynthesiserVoice
             const double syncTime = syncEnabled && oscillators[0][0].wave.getPhase() + step[0][0] >= 1
                 ? (1 - oscillators[0][0].wave.getPhase()) / step[0][0] : -1;
             float mixed[2] {};
+            float bankOut[2][2] {};
+            const double pwmAmount = pwmDepthSmooth.getNextValue();
             for (int bank = 0; bank < 2; ++bank)
             {
                 syngen::BandlimitedOscillator::Mix mix;
@@ -234,16 +254,41 @@ struct MySynthVoice : public juce::SynthesiserVoice
                 mix.pulse = waveMix[bank][2].getNextValue();
                 mix.triangle = waveMix[bank][3].getNextValue();
                 mix.sub = waveMix[bank][4].getNextValue();
-                const double pulseWidth = width[bank].getNextValue();
+                const double baseWidth = width[bank].getNextValue();
                 const float bankGain = gain[bank] * (float) level[bank].getNextValue();
+                // Only shape the modulator where it can be heard; elsewhere the
+                // phase still advances, so switching PWM in mid-note picks up
+                // where the modulator already was rather than jumping.
+                const bool modulating = pwmAmount > 0.0 && mix.pulse != 0.0;
                 for (int u = 0; u < count[bank]; ++u)
                 {
                     auto& osc = oscillators[bank][u];
+                    double pulseWidth = baseWidth;
+                    if (modulating)
+                        pulseWidth = juce::jlimit (0.05, 0.95, baseWidth + pwmAmount * 0.45 * osc.pwm.next());
+                    else
+                        osc.pwm.advance (1);
                     const float sample = (float) osc.wave.next (step[bank][u], mix, pulseWidth,
                                                                bank == 1 ? syncTime : -1) * bankGain;
-                    mixed[0] += sample * osc.panLeft;
-                    mixed[1] += sample * osc.panRight;
+                    bankOut[bank][0] += sample * osc.panLeft;
+                    bankOut[bank][1] += sample * osc.panRight;
                 }
+            }
+            const double ring = ringSmooth.getNextValue();
+            const double noiseAmount = noiseLevelSmooth.getNextValue();
+            const double colour = noiseColourSmooth.getNextValue();
+            // Noise is mono, so a single centred voice still takes the shared
+            // filter path below.
+            const float noiseSample = noiseAmount > 0.0
+                ? (float) (noiseAmount * 2.0 * noise.next (colour)) : 0.0f;
+            for (int channel = 0; channel < 2; ++channel)
+            {
+                mixed[channel] = bankOut[0][channel] + bankOut[1][channel] + noiseSample;
+                // Ring modulation is summed alongside the oscillators rather
+                // than replacing them, the way a classic ring-mod mixer channel
+                // is, so it can be blended in against the dry pair.
+                if (ring > 0.0)
+                    mixed[channel] += (float) (ring * 2.0 * bankOut[0][channel] * bankOut[1][channel]);
             }
             const double tracking = trackingSmooth.getNextValue()
                 * std::log2 (glide.getFrequency() / 261.6255653005986);
@@ -252,10 +297,23 @@ struct MySynthVoice : public juce::SynthesiserVoice
             const double G = syngen::FeedbackLadder::coefficient (cutoff, renderRate);
             const double resonance = (resonanceSmooth.getNextValue() - 0.5) * (4.2 / 9.5) * resonanceTrim;
             const float drive = (float) (1 + 7 * driveSmooth.getNextValue());
-            const double compensation = compensationSmooth.getNextValue();
+            syngen::FeedbackLadder::Response response;
+            double dcGain = 0.0;
+            for (int w = 0; w < 5; ++w)
+            {
+                response.weight[(size_t) w] = filterMix[w].getNextValue();
+                dcGain += response.weight[(size_t) w];
+            }
+            // Bass compensation restores the low end that resonance takes out
+            // of a lowpass. Scaled by the mode's own DC gain, it applies in
+            // full to the lowpasses and the notch, and not at all to the
+            // bandpasses and highpasses, which have no low end to restore and
+            // where it would only be up to 14 dB of extra drive.
+            const double compensation = compensationSmooth.getNextValue()
+                                        * juce::jlimit (0.0, 1.0, dcGain);
             const float vca = ampEnvelope.next() * (float) glide.getLevel() / std::sqrt (drive);
-            float outL = blocker[0].process (ladder[0].process (mixed[0] * 0.3f * drive, G, resonance, compensation)) * vca;
-            float outR = mono ? outL : blocker[1].process (ladder[1].process (mixed[1] * 0.3f * drive, G, resonance, compensation)) * vca;
+            float outL = blocker[0].process (ladder[0].process (mixed[0] * 0.3f * drive, G, resonance, compensation, response)) * vca;
+            float outR = mono ? outL : blocker[1].process (ladder[1].process (mixed[1] * 0.3f * drive, G, resonance, compensation, response)) * vca;
             decimator[0].push (outL);
             if (! mono) decimator[1].push (outR);
             if (n % 4 == 3)
@@ -347,6 +405,20 @@ private:
         target (resonanceSmooth, read (resonanceQ, 0.707f), initialise);
         target (driveSmooth, read (overloadAmount, 0), initialise);
         target (compensationSmooth, read (filterCompensation, 0.5f), initialise);
+        target (pwmDepthSmooth, read (pwmDepth, 0), initialise);
+        target (noiseLevelSmooth, read (noiseLevel, 0), initialise);
+        target (noiseColourSmooth, read (noiseColour, 1), initialise);
+        target (ringSmooth, read (ringModLevel, 0), initialise);
+        const auto response = syngen::FeedbackLadder::response (
+            juce::jlimit (0, syngen::FeedbackLadder::modeCount - 1, read (filterMode, 0)));
+        for (int w = 0; w < 5; ++w) target (filterMix[w], response.weight[(size_t) w], initialise);
+        const double pwmIncrement = read (pwmRate, 0.6f) / renderRate;
+        for (int bank = 0; bank < 2; ++bank)
+            for (int u = 0; u < kMaxUnisonVoices; ++u)
+                // A few percent of rate spread per voice, so a held chord's
+                // widths drift apart instead of pulsing as one.
+                oscillators[bank][u].pwm.setIncrement (
+                    pwmIncrement * (1.0 + 0.06 * (unisonPhase (u, bank) - 0.5)));
         target (envAmountSmooth, read (envAmountOct, 0), initialise);
         target (trackingSmooth, read (kbTrackAmount, 0), initialise);
         const double tolerance = juce::jlimit (0.0, 1.0, read (driftAmount, 1));
@@ -436,6 +508,9 @@ private:
     {
         if (! phaseInitialised || hostSamples <= 0) return;
         const int samples = hostSamples * 4;
+        for (int bank = 0; bank < 2; ++bank)
+            for (int u = 0; u < kMaxUnisonVoices; ++u)
+                oscillators[bank][u].pwm.advance (samples);
         if (phaseMode[0] != 2 && phaseMode[1] != 2)
         {
             commonDrift.advance (samples);
@@ -462,10 +537,12 @@ private:
     {
         syngen::BandlimitedOscillator wave;
         syngen::SmoothDrift drift;
+        syngen::PulseWidthLfo pwm;
         juce::SmoothedValue<double, juce::ValueSmoothingTypes::Multiplicative> detune;
         double spread = 0;
         float panLeft = 1, panRight = 1;
     } oscillators[2][kMaxUnisonVoices];
+    syngen::NoiseSource noise;
     syngen::SmoothDrift commonDrift;
     syngen::PitchGlide glide;
     juce::Random random;
@@ -479,6 +556,10 @@ private:
     juce::SmoothedValue<double> waveMix[2][5], width[2], tuning[2], level[2];
     juce::SmoothedValue<double> stereoWidth, driftDepth, resonanceSmooth, driveSmooth, compensationSmooth;
     juce::SmoothedValue<double> envAmountSmooth, trackingSmooth;
+    juce::SmoothedValue<double> pwmDepthSmooth, noiseLevelSmooth, noiseColourSmooth, ringSmooth;
+    // The five ladder tap weights are smoothed rather than switched, so the
+    // filter mode is a performable control instead of a click.
+    juce::SmoothedValue<double> filterMix[5];
     juce::SmoothedValue<double, juce::ValueSmoothingTypes::Multiplicative> cutoffSmooth;
     syngen::FeedbackLadder ladder[2];
     syngen::DCBlocker blocker[2];

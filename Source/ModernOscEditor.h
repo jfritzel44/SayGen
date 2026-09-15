@@ -21,13 +21,18 @@ public:
           phase1 (state, "osc1StartPhase", "Start Phase", look), phase2 (state, "osc2StartPhase", "Start Phase", look),
           randomness (state, "phaseRandomness", "Phase Rand", look), drift (state, "driftAmount", "Drift", look),
           spread (state, "unisonSpread", "Detune", look), stereo (state, "unisonWidth", "Stereo", look),
-          voices (state, "unisonVoices", "Voices", look), coarse (state, "osc2Coarse", "Coarse Tune", look)
+          voices (state, "unisonVoices", "Voices", look), coarse (state, "osc2Coarse", "Coarse Tune", look),
+          pwmDepth (state, "pwmDepth", "PWM Depth", look), pwmRate (state, "pwmRate", "PWM Rate", look),
+          noiseLevel (state, "noiseLevel", "Noise", look), noiseColour (state, "noiseColour", "Colour", look),
+          ringMod (state, "ringMod", "Ring Mod", look)
     {
         mixControls = { &modern1, &modern2, &sub1, &sub2, &saw1, &saw2, &pulse1, &pulse2,
                         &tri1, &tri2, &width1, &width2, &level1, &level2, &bass, &curve };
         motionControls = { &mode1, &mode2, &phase1, &phase2, &randomness, &drift, &spread, &stereo, &voices, &coarse };
+        sourceControls = { &pwmDepth, &pwmRate, &noiseLevel, &noiseColour, &ringMod };
         for (auto* c : mixControls) addAndMakeVisible (c);
         for (auto* c : motionControls) addChildComponent (c);
+        for (auto* c : sourceControls) addChildComponent (c);
         for (auto* mode : { &mode1, &mode2 })
         {
             mode->addItemList ({ "Retrigger", "Random", "Free" }, 1);
@@ -49,9 +54,18 @@ public:
         stereo.getSlider().setTooltip ("Unison width: mono to full stereo");
         bass.getSlider().setTooltip ("Restore bass as resonance increases");
         curve.getSlider().setTooltip ("Envelope curvature: linear to exponential");
-        mixButton.onClick = [this] { showMotion (false); };
-        motionButton.onClick = [this] { showMotion (true); };
+        pwmRate.getSlider().setTextValueSuffix (" Hz");
+        pwmDepth.getSlider().setTooltip ("Sweeps pulse width. Each voice has its own modulator, "
+                                         "so a stack beats against itself instead of pulsing as one");
+        pwmRate.getSlider().setTooltip ("Speed of the per-voice pulse-width sweep");
+        noiseLevel.getSlider().setTooltip ("Noise summed into the filter alongside the oscillators");
+        noiseColour.getSlider().setTooltip ("Noise tone: fully left is pink, fully right is white");
+        ringMod.getSlider().setTooltip ("Osc 1 multiplied by Osc 2, mixed in alongside them");
+        mixButton.onClick = [this] { showPage (0); };
+        motionButton.onClick = [this] { showPage (1); };
+        sourceButton.onClick = [this] { showPage (2); };
         addAndMakeVisible (mixButton); addAndMakeVisible (motionButton);
+        addAndMakeVisible (sourceButton);
 
         advancedToggle.setTooltip ("Turns Wave Mix on for both oscillators at once. While on, "
                                     "it replaces the Osc 1 / Osc 2 waveform knobs on the main "
@@ -69,7 +83,7 @@ public:
         modern2.onToggle = [this] { refreshAdvancedToggle(); };
         refreshAdvancedToggle();
 
-        showMotion (false);
+        showPage (0);
     }
 
     void paint (juce::Graphics& g) override
@@ -80,11 +94,31 @@ public:
         g.drawRoundedRectangle (getLocalBounds().toFloat().reduced (0.5f), 10, 1);
         g.setColour (juce::Colours::white);
         g.setFont (juce::FontOptions (13));
-        g.drawText ("Osc 1", 24, 104, 60, 20, juce::Justification::centredLeft);
-        g.drawText ("Osc 2", 24, 224, 60, 20, juce::Justification::centredLeft);
+        // Only the two per-oscillator pages have rows to label.
+        if (page != 2)
+        {
+            g.drawText ("Osc 1", 24, 104, 60, 20, juce::Justification::centredLeft);
+            g.drawText ("Osc 2", 24, 224, 60, 20, juce::Justification::centredLeft);
+        }
         g.setFont (juce::FontOptions (11));
         g.setColour (juce::Colours::white.withAlpha (0.7f));
-        if (motionVisible)
+        if (page == 2)
+        {
+            // Group headings, so the five knobs read as three sources rather
+            // than one undifferentiated row.
+            g.setFont (juce::FontOptions (13));
+            g.setColour (juce::Colours::white);
+            g.drawText ("Pulse width", 150, 66, 205, 20, juce::Justification::centred);
+            g.drawText ("Noise", 410, 66, 205, 20, juce::Justification::centred);
+            g.drawText ("Ring mod", 670, 66, 100, 20, juce::Justification::centred);
+            g.setColour (juce::Colours::white.withAlpha (0.7f));
+            g.setFont (juce::FontOptions (13.2f));
+            g.drawFittedText ("Pulse width modulation needs a pulse in the mix to hear - raise Pulse on the "
+                              "Wave Mix page, or pick the pulse waveform. Noise and ring modulation are summed "
+                              "in alongside the oscillators, before the filter.",
+                              24, 292, 950, 40, juce::Justification::centred, 2, 1.0f);
+        }
+        else if (page == 1)
         {
             g.drawText ("Phase Mode", 90, 76, 130, 18, juce::Justification::centred);
             g.drawText ("Phase Mode", 90, 196, 130, 18, juce::Justification::centred);
@@ -103,7 +137,13 @@ public:
     {
         mixButton.setBounds (20, 12, 105, 28);
         motionButton.setBounds (135, 12, 105, 28);
-        advancedToggle.setBounds (250, 12, 150, 28);
+        sourceButton.setBounds (250, 12, 105, 28);
+        advancedToggle.setBounds (365, 12, 150, 28);
+        pwmDepth.setBounds (150, 92, 100, 88);
+        pwmRate.setBounds (255, 92, 100, 88);
+        noiseLevel.setBounds (410, 92, 100, 88);
+        noiseColour.setBounds (515, 92, 100, 88);
+        ringMod.setBounds (670, 92, 100, 88);
         auto row = [] (int y, SyncToggleButton& modern, LabeledKnob& saw, LabeledKnob& pulse,
                        LabeledKnob& tri, LabeledKnob& width, SyncToggleButton& sub, LabeledKnob& level)
         {
@@ -128,13 +168,15 @@ private:
         advancedToggle.setToggleState (bothOn, juce::dontSendNotification);
         advancedToggle.setButtonText (bothOn ? "Advanced Osc: ON" : "Advanced Osc: OFF");
     }
-    void showMotion (bool motion)
+    void showPage (int which)
     {
-        motionVisible = motion;
-        for (auto* c : mixControls) c->setVisible (! motion);
-        for (auto* c : motionControls) c->setVisible (motion);
-        mixButton.setToggleState (! motion, juce::dontSendNotification);
-        motionButton.setToggleState (motion, juce::dontSendNotification);
+        page = which;
+        for (auto* c : mixControls) c->setVisible (which == 0);
+        for (auto* c : motionControls) c->setVisible (which == 1);
+        for (auto* c : sourceControls) c->setVisible (which == 2);
+        mixButton.setToggleState (which == 0, juce::dontSendNotification);
+        motionButton.setToggleState (which == 1, juce::dontSendNotification);
+        sourceButton.setToggleState (which == 2, juce::dontSendNotification);
         repaint();
     }
     juce::RangedAudioParameter* osc1ModernParam = nullptr;
@@ -142,15 +184,16 @@ private:
     SyncToggleButton modern1, modern2, sub1, sub2;
     LabeledKnob saw1, saw2, pulse1, pulse2, tri1, tri2, width1, width2, level1, level2, bass, curve;
     LabeledKnob phase1, phase2, randomness, drift, spread, stereo, voices, coarse;
+    LabeledKnob pwmDepth, pwmRate, noiseLevel, noiseColour, ringMod;
     juce::ComboBox mode1, mode2;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> modeAttachment1, modeAttachment2;
-    juce::TextButton mixButton { "Wave Mix" }, motionButton { "Motion" };
+    juce::TextButton mixButton { "Wave Mix" }, motionButton { "Motion" }, sourceButton { "Sources" };
     // Master switch: turns Wave Mix on/off for both oscillators together,
     // since a mismatched on/off/on split between them is rarely wanted and
     // was confusing users about why the main-screen knobs stopped doing
     // anything.
     juce::TextButton advancedToggle { "Advanced Osc: OFF" };
-    std::vector<juce::Component*> mixControls, motionControls;
-    bool motionVisible = false;
+    std::vector<juce::Component*> mixControls, motionControls, sourceControls;
+    int page = 0;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ModernOscEditor)
 };

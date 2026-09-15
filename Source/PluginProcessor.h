@@ -19,6 +19,12 @@ public:
     std::atomic<float> unisonWidth { 0.9f }, osc2Coarse { 0 };
     std::atomic<float> osc1Level { 0.75f }, osc2Level { 0.75f };
     std::atomic<float> filterCompensation { 0.5f }, envelopeCurve { 0.65f };
+    // Ladder output mode, plus the three sources the oscillator section gained:
+    // pulse-width modulation, a noise generator and ring modulation.
+    std::atomic<int>   filterMode   { 0 };
+    std::atomic<float> pwmDepth     { 0.0f }, pwmRate { 0.6f };
+    std::atomic<float> noiseLevel   { 0.0f }, noiseColour { 1.0f };
+    std::atomic<float> ringModLevel { 0.0f };
     std::atomic<bool>  midiActivity   { false };
     std::atomic<int>   oscType        { 0 };
     std::atomic<int>   osc2Type       { 0 };

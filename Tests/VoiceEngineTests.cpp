@@ -19,6 +19,8 @@ struct VoiceFixture
     std::atomic<float> sawMix { 1 }, triMix { 0 };
     std::atomic<float> drift { 0 }, level1 { 0.75f }, level2 { 0.75f }, cutoff { 20000 };
     std::atomic<float> drive { 0 }, resonance { 0.5f }, attack { 0.001f }, decay { 0.05f }, sustain { 1 }, release { 0.03f };
+    std::atomic<int> filterMode { 0 };
+    std::atomic<float> pwmDepth { 0 }, pwmRate { 0.6f }, noiseLevel { 0 }, noiseColour { 1 }, ringMod { 0 };
     VoiceFixture (double rate, float velocity = 1.0f)
     {
         voice.setOscillatorSeed (12345);
@@ -39,6 +41,8 @@ struct VoiceFixture
         voice.attackSeconds = &attack; voice.decaySeconds = &decay;
         voice.sustainLevel = &sustain; voice.releaseSeconds = &release;
         voice.osc1UnisonVoices = &unison; voice.osc2UnisonVoices = &unison;
+        voice.filterMode = &filterMode; voice.pwmDepth = &pwmDepth; voice.pwmRate = &pwmRate;
+        voice.noiseLevel = &noiseLevel; voice.noiseColour = &noiseColour; voice.ringModLevel = &ringMod;
         voice.setCurrentPlaybackSampleRate (rate);
         start (60, velocity);
     }
@@ -248,7 +252,7 @@ int main (int argc, char** argv)
             auto showPanel = [] (auto&& self, juce::Component& component) -> void
             {
                 if (auto* button = dynamic_cast<juce::TextButton*> (&component))
-                    if (button->getButtonText() == "OSC MIX") button->onClick();
+                    if (button->getButtonText() == "ADV OSC") button->onClick();
                 for (int i = 0; i < component.getNumChildComponents(); ++i)
                     self (self, *component.getChildComponent (i));
             };
@@ -268,6 +272,17 @@ int main (int argc, char** argv)
             juce::FileOutputStream motionOutput { juce::File (argv[1]).getSiblingFile ("syngen-motion-panel.png") };
             require (juce::PNGImageFormat().writeImageToStream (editor->createComponentSnapshot (editor->getLocalBounds()),
                                                                motionOutput), "motion snapshot writes");
+            auto showSources = [] (auto&& self, juce::Component& component) -> void
+            {
+                if (auto* button = dynamic_cast<juce::TextButton*> (&component))
+                    if (button->getButtonText() == "Sources") button->onClick();
+                for (int i = 0; i < component.getNumChildComponents(); ++i)
+                    self (self, *component.getChildComponent (i));
+            };
+            showSources (showSources, *editor);
+            juce::FileOutputStream sourcesOutput { juce::File (argv[1]).getSiblingFile ("syngen-sources-panel.png") };
+            require (juce::PNGImageFormat().writeImageToStream (editor->createComponentSnapshot (editor->getLocalBounds()),
+                                                               sourcesOutput), "sources snapshot writes");
         }
 
     }
@@ -484,5 +499,137 @@ int main (int argc, char** argv)
         auto ms = std::chrono::duration<double, std::milli> (std::chrono::steady_clock::now() - start).count();
         std::cout << "1 second / 1 note / " << count << " unison: " << ms << " ms\n";
     }
+    // --- New oscillator sources and filter modes -----------------------------
+    {
+        const double rate = 48000.0;
+        auto rms = [] (const std::vector<float>& v)
+        {
+            double total = 0.0;
+            for (float x : v) total += (double) x * x;
+            return std::sqrt (total / std::max<size_t> (1, v.size()));
+        };
+        // Everything new defaults to neutral, so a patch written before any of
+        // it existed has to render bit for bit as it did.
+        {
+            VoiceFixture reference (rate), untouched (rate);
+            untouched.pwmRate = 3.0f;          // set but inactive at zero depth
+            untouched.noiseColour = 0.0f;      // ditto, with no noise in the mix
+            const auto a = reference.render (24000), b = untouched.render (24000);
+            for (size_t i = 0; i < a.size(); ++i)
+                require (a[i] == b[i], "inactive sources do not touch the output");
+        }
+
+        // Noise alone, with both oscillators silenced, must still sound.
+        {
+            // The fixture starts its note on construction, so restart after
+            // setting levels: otherwise the smoothers glide down from 0.75 and
+            // the "silent" render opens with an audible 10 ms tail.
+            VoiceFixture quiet (rate);
+            quiet.level1 = 0.0f; quiet.level2 = 0.0f;
+            quiet.start (60);
+            const double silent = rms (quiet.render (24000));
+            VoiceFixture noisy (rate);
+            noisy.level1 = 0.0f; noisy.level2 = 0.0f; noisy.noiseLevel = 0.8f;
+            noisy.start (60);
+            const double hiss = rms (noisy.render (24000));
+            require (silent < 1e-6, "oscillators silenced really are silent");
+            require (hiss > 0.02, "noise reaches the output on its own");
+
+            // Pink has to be audibly darker than white through the whole voice.
+            auto brightness = [&] (float colour)
+            {
+                VoiceFixture f (rate);
+                f.level1 = 0.0f; f.level2 = 0.0f; f.noiseLevel = 0.8f; f.noiseColour = colour;
+                f.start (60);
+                const auto v = f.render (48000);
+                double difference = 0.0, total = 0.0;
+                for (size_t i = 1; i < v.size(); ++i)
+                {
+                    const double d = (double) v[i] - v[i - 1];
+                    difference += d * d;
+                    total += (double) v[i] * v[i];
+                }
+                return difference / std::max (1e-20, total);
+            };
+            require (brightness (0.0f) < 0.6 * brightness (1.0f), "pink noise is darker than white");
+        }
+
+        // Ring modulation adds sum and difference tones, so it must change the
+        // output, and must do nothing when either oscillator is silent.
+        {
+            VoiceFixture dry (rate), ringed (rate);
+            ringed.ringMod = 1.0f;
+            const auto plain = dry.render (24000), modulated = ringed.render (24000);
+            double difference = 0.0;
+            for (size_t i = 0; i < plain.size(); ++i)
+                difference = std::max (difference, (double) std::abs (plain[i] - modulated[i]));
+            require (difference > 0.01, "ring modulation changes the output");
+
+            VoiceFixture oneSided (rate);
+            oneSided.ringMod = 1.0f; oneSided.level2 = 0.0f;
+            oneSided.start (60);
+            VoiceFixture reference (rate);
+            reference.level2 = 0.0f;
+            reference.start (60);
+            const auto a = oneSided.render (24000), b = reference.render (24000);
+            for (size_t i = 0; i < a.size(); ++i)
+                require (std::abs (a[i] - b[i]) < 1e-6f, "ring modulation is silent without both oscillators");
+        }
+
+        // PWM has to move the pulse width, and only where there is a pulse.
+        {
+            VoiceFixture still (rate), swept (rate);
+            for (auto* f : { &still, &swept })
+            { f->modern1 = true; f->modern2 = true; f->pulseMix = 1.0f; f->sawMix = 0.0f; }
+            swept.pwmDepth = 0.9f; swept.pwmRate = 4.0f;
+            still.start (60); swept.start (60);
+            const auto flat = still.render (48000), moving = swept.render (48000);
+            double difference = 0.0;
+            for (size_t i = 0; i < flat.size(); ++i)
+                difference = std::max (difference, (double) std::abs (flat[i] - moving[i]));
+            require (difference > 0.01, "PWM moves the pulse width");
+
+            VoiceFixture sawOnly (rate), sawSwept (rate);
+            for (auto* f : { &sawOnly, &sawSwept })
+            { f->modern1 = true; f->modern2 = true; f->pulseMix = 0.0f; f->sawMix = 1.0f; }
+            sawSwept.pwmDepth = 0.9f; sawSwept.pwmRate = 4.0f;
+            sawOnly.start (60); sawSwept.start (60);
+            const auto a = sawOnly.render (24000), b = sawSwept.render (24000);
+            for (size_t i = 0; i < a.size(); ++i)
+                require (a[i] == b[i], "PWM does nothing without a pulse in the mix");
+        }
+
+        // Filter modes, through the whole voice with its nonlinear stages: a
+        // highpass on a low note has to lose the fundamental a lowpass keeps.
+        {
+            auto renderMode = [&] (int mode, float cutoffHz)
+            {
+                VoiceFixture f (rate);
+                f.filterMode = mode; f.cutoff = cutoffHz; f.resonance = 0.5f;
+                f.start (60);
+                return f.render (48000);
+            };
+            const double lowpass = rms (renderMode (0, 2000.0f));
+            const double highpass = rms (renderMode (4, 2000.0f));
+            require (highpass < 0.5 * lowpass, "HP24 removes what LP24 keeps on a low note");
+
+            // Switching mode mid-note must not step the output: the tap
+            // weights are smoothed, so the largest sample-to-sample jump has
+            // to stay in the range the waveform itself already covers.
+            VoiceFixture switching (rate);
+            switching.cutoff = 1500.0f;
+            auto before = switching.render (12000);
+            double largestBefore = 0.0;
+            for (size_t i = 1; i < before.size(); ++i)
+                largestBefore = std::max (largestBefore, (double) std::abs (before[i] - before[i - 1]));
+            switching.filterMode = 4;   // straight to HP24
+            auto after = switching.render (12000);
+            double largestAfter = 0.0;
+            for (size_t i = 1; i < after.size(); ++i)
+                largestAfter = std::max (largestAfter, (double) std::abs (after[i] - after[i - 1]));
+            require (largestAfter < 4.0 * largestBefore + 0.05, "changing filter mode does not click");
+        }
+    }
+
     std::cout << "Voice and state tests passed\n";
 }

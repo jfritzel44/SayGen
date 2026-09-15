@@ -93,5 +93,101 @@ int main()
                 require (std::isfinite (out) && std::abs (out) < 8, "all waveforms remain bounded under sync");
             }
         }
+    // --- Noise source --------------------------------------------------------
+    for (double rate : { 44100.0 * 4, 48000.0 * 4, 96000.0 * 4 })
+    {
+        // Level must hold across the whole colour control and across rates,
+        // so the knob changes tone and nothing else.
+        double quietest = 1e9, loudest = 0.0;
+        for (double colour : { 0.0, 0.25, 0.5, 0.75, 1.0 })
+        {
+            syngen::NoiseSource noise;
+            noise.prepare (rate, 9876u);
+            double total = 0.0;
+            const int count = 400000;
+            double peak = 0.0;
+            for (int i = 0; i < count; ++i)
+            {
+                const double v = noise.next (colour);
+                require (std::isfinite (v), "noise is finite");
+                total += v * v;
+                peak = std::max (peak, std::abs (v));
+            }
+            const double level = std::sqrt (total / count);
+            require (peak < 2.0, "noise stays bounded");
+            quietest = std::min (quietest, level);
+            loudest = std::max (loudest, level);
+        }
+        require (20.0 * std::log10 (loudest / quietest) < 1.0,
+                 "noise holds its level across the colour control");
+
+        // Pink must actually be darker than white. Comparing first-difference
+        // energy to signal energy is a broadband high-frequency measure that
+        // needs no transform; the -3 dB/octave tilt should show up as a large
+        // ratio between the two ends.
+        auto brightness = [rate] (double colour)
+        {
+            syngen::NoiseSource noise;
+            noise.prepare (rate, 4242u);
+            double previous = noise.next (colour), difference = 0.0, total = 0.0;
+            for (int i = 0; i < 400000; ++i)
+            {
+                const double v = noise.next (colour);
+                difference += (v - previous) * (v - previous);
+                total += v * v;
+                previous = v;
+            }
+            return difference / total;
+        };
+        require (brightness (0.0) < 0.5 * brightness (1.0), "pink is darker than white");
+    }
+
+    // Two seeds must not produce the same stream; two voices' noise would
+    // otherwise sum coherently into a 6 dB louder, centred hiss.
+    {
+        syngen::NoiseSource first, second;
+        first.prepare (176400.0, 1u);
+        second.prepare (176400.0, 2u);
+        double cross = 0.0, energy = 0.0;
+        for (int i = 0; i < 200000; ++i)
+        {
+            const double a = first.next (1.0), b = second.next (1.0);
+            cross += a * b;
+            energy += a * a;
+        }
+        require (std::abs (cross / energy) < 0.05, "different seeds decorrelate");
+    }
+
+    // --- Pulse-width modulator -----------------------------------------------
+    {
+        const double rate = 192000.0;
+        syngen::PulseWidthLfo lfo;
+        lfo.reset (0.0);
+        lfo.setIncrement (2.0 / rate);   // 2 Hz
+        double lowest = 1.0, highest = -1.0;
+        int risingZeroCrossings = 0;
+        double previous = lfo.next();
+        for (int i = 0; i < (int) rate; ++i)   // one second
+        {
+            const double v = lfo.next();
+            require (std::isfinite (v) && std::abs (v) <= 1.001, "width modulator stays in range");
+            lowest = std::min (lowest, v);
+            highest = std::max (highest, v);
+            if (previous < 0.0 && v >= 0.0) ++risingZeroCrossings;
+            previous = v;
+        }
+        require (highest > 0.99 && lowest < -0.99, "width modulator uses its full range");
+        require (risingZeroCrossings == 2, "width modulator runs at the rate it was given");
+
+        // advance() has to leave the phase exactly where next() would.
+        syngen::PulseWidthLfo stepped, skipped;
+        stepped.reset (0.25); skipped.reset (0.25);
+        stepped.setIncrement (0.003); skipped.setIncrement (0.003);
+        for (int i = 0; i < 500; ++i) stepped.next();
+        skipped.advance (500);
+        require (std::abs (stepped.next() - skipped.next()) < 1e-9,
+                 "advancing matches stepping sample by sample");
+    }
+
     std::cout << "Oscillator motion tests passed\n";
 }

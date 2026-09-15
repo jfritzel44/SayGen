@@ -64,6 +64,67 @@ Resonance reaches 4.2 feedback gain; self-oscillation is permitted.
 Cutoff uses 5 ms smoothing; level, drive, resonance and compensation use 10 ms.
 The filter envelope is applied after cutoff smoothing, preserving fast attacks.
 
+## Filter modes
+
+The filter core is unchanged — same nonlinear ladder, same drive, same
+resonance — but its output is now a weighted sum of five taps rather than only
+the fourth pole: the feedback junction plus each of the four stage outputs.
+Stage k is exactly the k-th power of the same one-pole lowpass, so every
+standard response falls out of the binomial theorem: a highpass is (1 − LP)^n,
+a bandpass is (1 − LP)^n·LP^n, and a notch is LP2 + HP2. That gives LP 24,
+LP 12, BP 24, BP 12, HP 24, HP 12 and Notch from four extra multiply-accumulates
+on state the ladder had already computed. It is the Oberheim Xpander's trick,
+and it leaves the Moog character intact because the feedback is still taken from
+the fourth stage in every mode, so resonance behaves like the ladder it is
+rather than turning into a different filter per setting.
+
+Measured at 1 kHz cutoff: LP 12 and HP 12 are −6.0 dB at cutoff, LP 24 and
+HP 24 are −12.0 dB (each one-pole contributes 1/√2), both bandpasses peak at
+exactly unity, and the notch nulls to 0.0000. Slopes measure 11.7 and 23.4 dB
+per octave. The default response is bit-identical to an explicitly selected
+LP 24, so nothing that already existed changed.
+
+The tap weights are smoothed over 10 ms rather than switched, so mode is a
+performable control instead of a click. Bass compensation is scaled by the
+selected mode's DC gain, which is exactly 1 for the lowpasses and the notch and
+exactly 0 for the bandpasses and highpasses — those have no low end to restore,
+and applying it there would only have added up to 14 dB of extra drive.
+
+## Oscillator sources
+
+Three additions, all on the **Sources** page of the Advanced Osc panel, and all
+defaulting to neutral so existing patches are unaffected.
+
+**Pulse-width modulation.** Pulse width was static. Every oscillator now carries
+its own free-running modulator, with a per-voice rate spread of a few percent
+and start phases scattered by the same hash that scatters unison phases. In
+lockstep a stack would only get wider and narrower together; offset, the copies
+beat against each other, which is the point of PWM on a stacked patch. Depth
+sweeps ±0.45 around the authored width, clamped to 0.05–0.95. The modulator's
+phase keeps running even where it is not being applied, so switching PWM in
+mid-note picks up where it already was instead of jumping. It applies to the
+classic square as well as the Wave Mix pulse, since the classic waveform is a
+pulse at width 0.5.
+
+**Noise.** White-to-pink, generated at the oscillators' 4× rate so the decimator
+band-limits it along with everything else, and summed into the filter input
+alongside the oscillators. The pink path is Paul Kellett's three one-pole
+economy filter; its published coefficients are for 44.1 kHz, so each pole is
+re-solved for the actual rate and its input gain rescaled to hold that band's
+power constant — without that the filter gets shallower as the rate rises and
+"pink" drifts towards white. Pink and white are partly correlated, since pink is
+derived from the same white sample, so a plain crossfade loses about 2 dB in the
+middle; dividing by the RMS the measured correlation predicts holds the control
+flat within 0.15 dB end to end and across 44.1/48/96 kHz. Each voice seeds its
+own generator, so stacked voices do not sum into one coherent centred hiss.
+
+**Ring modulation.** Osc 1 multiplied by Osc 2, summed in alongside them rather
+than replacing them, the way a classic ring-mod mixer channel is, so it can be
+blended against the dry pair. It is silent unless both oscillators are sounding.
+Sum and difference tones can exceed Nyquist; 4× oversampling reduces the
+resulting aliasing but does not eliminate it, so extreme intervals will still
+produce some.
+
 ## Effects
 
 The effects chain was the last part of the signal path still running stock
@@ -119,7 +180,11 @@ plugin latency.
 once-per-block jump, which is what made a swept volume knob buzz.
 
 The reverb costs about 0.36% of one core and the echo 0.06%, measured on ten
-seconds of stereo at 48 kHz on this machine.
+seconds of stereo at 48 kHz on this machine. The filter modes and the three new
+oscillator sources together cost roughly 8% of the voice's render time even
+while switched off, from the extra smoothed coefficients in the per-sample path:
+one second at 48 kHz went from about 41 ms to 44.5 ms for a single note, and
+from 71 ms to 78 ms with seven unison voices per oscillator.
 
 ## Modulation
 
@@ -208,11 +273,19 @@ tail, width 0 collapsing to mono and width 1 decorrelating, boundedness at
 maximum decay under sustained full-scale noise, echo repeat timing and
 multi-repeat decay with damping off, repeats darkening as they decay, a time
 sweep gliding rather than stepping, boundedness at maximum feedback,
-transparency at mix 0, and mono-bus rendering for both.
+transparency at mix 0, and mono-bus rendering for both. The filter modes are
+checked against their exact gains at cutoff, their slopes, the bandpass peaks
+and the notch null, and the DC gain of every mode; the default response is
+asserted bit-identical to LP 24. The new sources are checked through the whole
+voice: that they are bit-identical to the old engine while inactive, that noise
+sounds on its own and pink is darker than white, that ring modulation changes
+the output and is silent without both oscillators, that PWM moves the width and
+does nothing without a pulse in the mix, and that changing filter mode mid-note
+does not step the output.
 Timing output is a local microbenchmark, not a DAW
 performance guarantee. The Release run on this machine rendered one second at
-48 kHz in approximately 41 ms for one note without unison, and 71 ms with seven
-voices per oscillator; the stage saturation costs roughly 15% and 10% of those.
+48 kHz in approximately 44.5 ms for one note without unison, and 78 ms with
+seven voices per oscillator; the stage saturation costs roughly 15% and 10% of those.
 The eight-note Jump2 benchmark averages about 1.68 ms against a 2.67 ms deadline.
 Individual blocks do exceed it, typically one to three per 1500 on this machine,
 with occasional outliers past 4 ms that are far beyond anything the DSP accounts

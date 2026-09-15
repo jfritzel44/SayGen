@@ -157,6 +157,32 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
         "fltRelease", "Filter Release",
         juce::NormalisableRange<float> (0.001f, 3.0f, 0.001f, 0.4f), 0.1f));
 
+    // Ladder output taps. The filter core is unchanged; these mix its five
+    // taps into the classic responses (see syngen::FeedbackLadder::response).
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        "filterMode", "Filter Mode",
+        juce::StringArray { "LP 24", "LP 12", "BP 24", "BP 12", "HP 24", "HP 12", "Notch" }, 0));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "pwmDepth", "PWM Depth",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "pwmRate", "PWM Rate",
+        juce::NormalisableRange<float> (0.02f, 10.0f, 0.01f, 0.35f), 0.6f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "noiseLevel", "Noise Level",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "noiseColour", "Noise Colour",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 1.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "ringMod", "Ring Mod",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         "lfoSource", "LFO Source",
         juce::StringArray { "Sine", "Triangle", "Square", "Saw", "S&H" }, 0));
@@ -484,7 +510,12 @@ void MySynthAudioProcessor::setCurrentProgram (int index)
     // Reset optional sound controls so patches cannot inherit another patch's settings.
     for (auto id : { "osc1Level", "osc2Level", "filterCompensation", "envelopeCurve",
                      "osc1PhaseMode", "osc2PhaseMode", "osc1StartPhase", "osc2StartPhase",
-                     "phaseRandomness", "unisonSpread", "unisonWidth", "osc2Coarse" })
+                     "phaseRandomness", "unisonSpread", "unisonWidth", "osc2Coarse",
+                     // New sources and the filter mode. Their defaults are all
+                     // neutral - mode LP 24, no PWM, no noise, no ring mod -
+                     // so every preset written before they existed loads
+                     // sounding exactly as it did.
+                     "filterMode", "pwmDepth", "pwmRate", "noiseLevel", "noiseColour", "ringMod" })
         if (auto* param = apvts.getParameter (id))
             param->setValueNotifyingHost (param->getDefaultValue());
 
@@ -516,7 +547,8 @@ void MySynthAudioProcessor::saveCurrentPatchAsPreset (const juce::String& name)
         "osc1ModernOn", "osc1SawMix", "osc1PulseMix", "osc1TriMix", "osc1PulseWidth", "osc1SubOctave",
         "osc2ModernOn", "osc2SawMix", "osc2PulseMix", "osc2TriMix", "osc2PulseWidth", "osc2SubOctave",
         "attack", "decay", "sustain", "release",
-        "cutoff", "resonance", "envAmount",
+        "cutoff", "resonance", "envAmount", "filterMode",
+        "pwmDepth", "pwmRate", "noiseLevel", "noiseColour", "ringMod",
         "fltAttack", "fltDecay", "fltSustain", "fltRelease",
         "glideOn", "glideTime", "overload", "kbAmount",
         "osc1Level", "osc2Level", "filterCompensation", "envelopeCurve",
@@ -570,6 +602,12 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
         voice->osc1Level = &osc1Level;
         voice->osc2Level = &osc2Level;
         voice->filterCompensation = &filterCompensation;
+        voice->filterMode     = &filterMode;
+        voice->pwmDepth       = &pwmDepth;
+        voice->pwmRate        = &pwmRate;
+        voice->noiseLevel     = &noiseLevel;
+        voice->noiseColour    = &noiseColour;
+        voice->ringModLevel   = &ringModLevel;
         voice->envelopeCurve = &envelopeCurve;
         voice->oscType        = &oscType;
         voice->osc2Type       = &osc2Type;
@@ -807,6 +845,12 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     osc1Level.store (apvts.getRawParameterValue ("osc1Level")->load());
     osc2Level.store (apvts.getRawParameterValue ("osc2Level")->load());
     filterCompensation.store (apvts.getRawParameterValue ("filterCompensation")->load());
+    filterMode.store ((int) std::round (apvts.getRawParameterValue ("filterMode")->load()));
+    pwmDepth.store (apvts.getRawParameterValue ("pwmDepth")->load());
+    pwmRate.store (apvts.getRawParameterValue ("pwmRate")->load());
+    noiseLevel.store (apvts.getRawParameterValue ("noiseLevel")->load());
+    noiseColour.store (apvts.getRawParameterValue ("noiseColour")->load());
+    ringModLevel.store (apvts.getRawParameterValue ("ringMod")->load());
     envelopeCurve.store (apvts.getRawParameterValue ("envelopeCurve")->load());
 
     // Sync parameters to atomics read by voices

@@ -155,5 +155,119 @@ int main()
     const double improvement = 20 * std::log10 (aliasRatio (1) / aliasRatio (4));
     require (improvement > 20, "oversampling reduces folded third harmonic by at least 20 dB");
     std::cout << "Driven-filter alias reduction: " << improvement << " dB\n";
+    // --- Ladder output modes -------------------------------------------------
+    // Each mode is a weighted sum of taps the ladder already computes, so the
+    // checks here are on the shape of the response, not on the filter core,
+    // which is unchanged and covered above.
+    {
+        const double rate = 48000.0 * 4;
+        // Magnitude response at a given frequency, measured by driving the
+        // filter with a sine until it settles and taking the steady-state RMS.
+        auto magnitude = [&] (int mode, double cutoff, double frequency)
+        {
+            syngen::FeedbackLadder filter;
+            const double G = syngen::FeedbackLadder::coefficient (cutoff, rate);
+            const auto response = syngen::FeedbackLadder::response (mode);
+            const int settle = (int) (rate * 0.25), measure = (int) (rate * 0.25);
+            double total = 0.0;
+            for (int n = 0; n < settle + measure; ++n)
+            {
+                // Small signal, so the saturating stages stay in their linear
+                // region and this measures the mode, not the drive.
+                const float x = (float) (0.001 * std::sin (2.0 * pi * frequency * n / rate));
+                const float y = filter.process (x, G, 0.0, 0.0, response);
+                if (n >= settle) total += (double) y * y;
+            }
+            return std::sqrt (total / measure) / (0.001 / std::sqrt (2.0));
+        };
+
+        const double cutoff = 1000.0;
+        // Lowpasses pass the bottom and stop the top; highpasses the reverse;
+        // bandpasses roll off on both sides; the notch cuts only at cutoff.
+        require (magnitude (syngen::FeedbackLadder::lowpass24, cutoff, 100.0) > 0.95, "LP24 passes below cutoff");
+        require (magnitude (syngen::FeedbackLadder::lowpass24, cutoff, 8000.0) < 0.02, "LP24 stops above cutoff");
+        require (magnitude (syngen::FeedbackLadder::lowpass12, cutoff, 100.0) > 0.95, "LP12 passes below cutoff");
+        require (magnitude (syngen::FeedbackLadder::lowpass12, cutoff, 8000.0) < 0.1, "LP12 stops above cutoff");
+        require (magnitude (syngen::FeedbackLadder::highpass24, cutoff, 100.0) < 0.02, "HP24 stops below cutoff");
+        require (magnitude (syngen::FeedbackLadder::highpass24, cutoff, 8000.0) > 0.9, "HP24 passes above cutoff");
+        require (magnitude (syngen::FeedbackLadder::highpass12, cutoff, 100.0) < 0.1, "HP12 stops below cutoff");
+        require (magnitude (syngen::FeedbackLadder::highpass12, cutoff, 8000.0) > 0.9, "HP12 passes above cutoff");
+
+        // A 24 dB/octave slope must be twice as steep as a 12 dB/octave one.
+        // Two octaves below cutoff for the highpasses, measured as a ratio
+        // between one and two octaves out, keeps both well inside the stopband.
+        auto slopeDb = [&] (int mode, double near, double far)
+        {
+            return 20.0 * std::log10 (magnitude (mode, cutoff, near) / magnitude (mode, cutoff, far));
+        };
+        const double lp12Slope = slopeDb (syngen::FeedbackLadder::lowpass12, 4000.0, 8000.0);
+        const double lp24Slope = slopeDb (syngen::FeedbackLadder::lowpass24, 4000.0, 8000.0);
+        std::cout << "Ladder slope per octave: LP12 " << lp12Slope << " dB, LP24 " << lp24Slope << " dB\n";
+        require (lp12Slope > 10.0 && lp12Slope < 14.0, "LP12 rolls off about 12 dB per octave");
+        require (lp24Slope > 22.0 && lp24Slope < 26.0, "LP24 rolls off about 24 dB per octave");
+
+        // Gain at cutoff is exact for a cascade of identical one-poles: each
+        // stage contributes 1/sqrt(2), so two poles give 1/2 and four give 1/4,
+        // and the highpasses mirror them. The bandpass normalisation is chosen
+        // to put the peak at exactly unity.
+        require (std::abs (magnitude (syngen::FeedbackLadder::lowpass12, cutoff, cutoff) - 0.5) < 0.005,
+                 "LP12 is -6 dB at cutoff");
+        require (std::abs (magnitude (syngen::FeedbackLadder::lowpass24, cutoff, cutoff) - 0.25) < 0.005,
+                 "LP24 is -12 dB at cutoff");
+        require (std::abs (magnitude (syngen::FeedbackLadder::highpass12, cutoff, cutoff) - 0.5) < 0.005,
+                 "HP12 is -6 dB at cutoff");
+        require (std::abs (magnitude (syngen::FeedbackLadder::highpass24, cutoff, cutoff) - 0.25) < 0.005,
+                 "HP24 is -12 dB at cutoff");
+
+        for (int mode : { syngen::FeedbackLadder::bandpass12, syngen::FeedbackLadder::bandpass24 })
+            require (std::abs (magnitude (mode, cutoff, cutoff) - 1.0) < 0.005,
+                     "bandpass peaks at unity on its centre");
+        // Four octaves out. A two-pole bandpass only approaches 6 dB/octave
+        // well away from centre, so its skirts are much gentler than the
+        // four-pole's 12 dB/octave, and the bounds differ accordingly.
+        require (magnitude (syngen::FeedbackLadder::bandpass12, cutoff, 30.0) < 0.1,
+                 "BP12 rejects the bottom");
+        require (magnitude (syngen::FeedbackLadder::bandpass12, cutoff, 16000.0) < 0.2,
+                 "BP12 rejects the top");
+        require (magnitude (syngen::FeedbackLadder::bandpass24, cutoff, 30.0) < 0.02,
+                 "BP24 rejects the bottom");
+        require (magnitude (syngen::FeedbackLadder::bandpass24, cutoff, 16000.0) < 0.05,
+                 "BP24 rejects the top");
+        require (magnitude (syngen::FeedbackLadder::bandpass24, cutoff, 250.0)
+                 < 0.6 * magnitude (syngen::FeedbackLadder::bandpass12, cutoff, 250.0),
+                 "BP24 is the more selective of the two");
+
+        const int notch = syngen::FeedbackLadder::notch;
+        require (magnitude (notch, cutoff, cutoff) < 0.01, "notch nulls at cutoff");
+        require (magnitude (notch, cutoff, 60.0) > 0.9, "notch passes well below cutoff");
+        require (magnitude (notch, cutoff, 16000.0) > 0.9, "notch passes well above cutoff");
+
+        // The DC gain of each mode is what scales the bass-compensation
+        // control in the voice, so it has to be exactly 1 for the lowpasses
+        // and the notch and exactly 0 for the bandpasses and highpasses.
+        for (int mode = 0; mode < syngen::FeedbackLadder::modeCount; ++mode)
+        {
+            const auto response = syngen::FeedbackLadder::response (mode);
+            double sum = 0.0;
+            for (double w : response.weight) sum += w;
+            const bool passesDC = mode == syngen::FeedbackLadder::lowpass24
+                               || mode == syngen::FeedbackLadder::lowpass12
+                               || mode == syngen::FeedbackLadder::notch;
+            require (std::abs (sum - (passesDC ? 1.0 : 0.0)) < 1e-12, "mode DC gain is exact");
+        }
+
+        // The default overload and an explicit LP24 response must be the same
+        // filter, so nothing that already existed changed behaviour.
+        syngen::FeedbackLadder plain, tapped;
+        const double G = syngen::FeedbackLadder::coefficient (1200.0, rate);
+        const auto lp24 = syngen::FeedbackLadder::response (syngen::FeedbackLadder::lowpass24);
+        for (int n = 0; n < 20000; ++n)
+        {
+            const float x = (float) std::sin (0.01 * n) * 0.7f;
+            require (plain.process (x, G, 3.0, 0.5) == tapped.process (x, G, 3.0, 0.5, lp24),
+                     "default response is bit-identical to LP24");
+        }
+    }
+
     std::cout << "Enhanced DSP tests passed\n";
 }

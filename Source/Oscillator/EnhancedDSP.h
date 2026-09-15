@@ -31,7 +31,47 @@ public:
         return (squared - 9.0) * (squared - 9.0) / (9.0 * (squared + 3.0) * (squared + 3.0));
     }
 
+    // Output weights on the ladder's five taps: the feedback junction itself,
+    // then the outputs of the four one-pole stages. Every standard response is
+    // a weighted sum of those, because stage k is exactly the k-th power of the
+    // same one-pole lowpass - a highpass is (1 - LP)^n expanded by the binomial
+    // theorem, a bandpass is (1 - LP)^n LP^n, and a notch is LP2 + HP2. This is
+    // the Oberheim Xpander's trick, and it costs four multiply-accumulates on
+    // state the ladder had already computed.
+    //
+    // Feedback is always taken from the fourth stage whatever the output mix,
+    // so resonance keeps the ladder's own character in every mode rather than
+    // turning into a different filter per setting.
+    struct Response
+    {
+        std::array<double, 5> weight { { 0.0, 0.0, 0.0, 0.0, 1.0 } };
+    };
+
+    enum Mode { lowpass24, lowpass12, bandpass24, bandpass12, highpass24, highpass12, notch, modeCount };
+
+    static Response response (int mode)
+    {
+        switch (mode)
+        {
+            // The 2 and 4 on the bandpasses normalise their peak to unity; the
+            // rest are binomial coefficients and need no scaling.
+            case lowpass12:  return { { { 0.0,  0.0,  1.0,  0.0, 0.0 } } };
+            case bandpass24: return { { { 0.0,  0.0,  4.0, -8.0, 4.0 } } };
+            case bandpass12: return { { { 0.0,  2.0, -2.0,  0.0, 0.0 } } };
+            case highpass24: return { { { 1.0, -4.0,  6.0, -4.0, 1.0 } } };
+            case highpass12: return { { { 1.0, -2.0,  1.0,  0.0, 0.0 } } };
+            case notch:      return { { { 1.0, -2.0,  2.0,  0.0, 0.0 } } };
+            default:         return { { { 0.0,  0.0,  0.0,  0.0, 1.0 } } };
+        }
+    }
+
     float process (float input, double G, double resonance, double compensation)
+    {
+        return process (input, G, resonance, compensation, Response {});
+    }
+
+    float process (float input, double G, double resonance, double compensation,
+                   const Response& mix)
     {
         const double G2 = G * G, G4 = G2 * G2;
         const double S = (1.0 - G) * (G2 * G * state[0] + G2 * state[1]
@@ -53,18 +93,21 @@ public:
             const double candidate = u - residual / (1.0 + k * G4 * derivative);
             u = candidate > lo && candidate < hi ? candidate : 0.5 * (lo + hi);
         }
-        for (auto& s : state)
+        double output = mix.weight[0] * u;
+        for (int stage = 0; stage < 4; ++stage)
         {
             // Each stage saturates its own differential input, the way a
             // ladder's transistor pairs do, so drive and high resonance
             // compress progressively instead of meeting one clipper at the
             // feedback junction. saturate() is odd with unit slope at zero,
             // so quiet signals keep the linear response and unity DC gain.
+            double& s = state[(size_t) stage];
             const double v = (saturate (u) - saturate (s)) * G;
             u = v + s;
             s = u + v;
+            output += mix.weight[(size_t) stage + 1] * u;
         }
-        return (float) u;
+        return (float) output;
     }
 
     static double coefficient (double cutoff, double sampleRate)

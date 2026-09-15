@@ -93,6 +93,9 @@ private:
         LabeledKnob glideTimeKnob;
         LabeledKnob overloadKnob;
         LabeledKnob kbAmountKnob;
+        // Ladder output mode, in the Filter panel's header row
+        juce::ComboBox filterModeBox;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> filterModeAttachment;
         LabeledKnob cutoffKnob;
         LabeledKnob resonanceKnob;
         LabeledKnob attackKnob;
