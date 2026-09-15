@@ -6,12 +6,30 @@
 namespace syngen
 {
 // Four trapezoidal one-poles with a saturating, implicitly solved feedback
-// junction. This is a musical ladder model, not a transistor circuit emulation.
+// junction, each stage saturating its own differential input. This is a musical
+// ladder model, not a transistor circuit emulation: the junction solve treats
+// the stage gains as linear, so hard drive shifts where self-oscillation starts.
 // TPT foundation: Vadim Zavalishin, The Art of VA Filter Design, chapter 4.
 class FeedbackLadder
 {
 public:
     void reset() { state.fill (0.0); }
+
+    // Smooth rational tanh approximation: odd, unit slope at zero, saturating
+    // to exactly +/-1 at |x| >= 3. Cheap enough to run at every ladder stage.
+    static double saturate (double x)
+    {
+        const double b = std::clamp (x, -3.0, 3.0);
+        const double squared = b * b;
+        return b * (27.0 + squared) / (27.0 + 9.0 * squared);
+    }
+    // Analytic derivative of saturate(), zero where the input is clamped.
+    static double saturateSlope (double x)
+    {
+        if (x <= -3.0 || x >= 3.0) return 0.0;
+        const double squared = x * x;
+        return (squared - 9.0) * (squared - 9.0) / (9.0 * (squared + 3.0) * (squared + 3.0));
+    }
 
     float process (float input, double G, double resonance, double compensation)
     {
@@ -27,12 +45,8 @@ public:
         for (int iteration = 0; iteration < 8; ++iteration)
         {
             const double junction = x - k * (G4 * u + S);
-            const double bounded = std::clamp (junction, -3.0, 3.0);
-            const double squared = bounded * bounded;
-            // Smooth rational tanh approximation with an analytic derivative.
-            const double t = bounded * (27.0 + squared) / (27.0 + 9.0 * squared);
-            const double derivative = junction != bounded ? 0.0
-                : (squared - 9.0) * (squared - 9.0) / (9.0 * (squared + 3.0) * (squared + 3.0));
+            const double t = saturate (junction);
+            const double derivative = saturateSlope (junction);
             const double residual = u - t;
             if (std::abs (residual) < 1.0e-9) break;
             if (residual > 0.0) hi = u; else lo = u;
@@ -41,7 +55,12 @@ public:
         }
         for (auto& s : state)
         {
-            const double v = (u - s) * G;
+            // Each stage saturates its own differential input, the way a
+            // ladder's transistor pairs do, so drive and high resonance
+            // compress progressively instead of meeting one clipper at the
+            // feedback junction. saturate() is odd with unit slope at zero,
+            // so quiet signals keep the linear response and unity DC gain.
+            const double v = (saturate (u) - saturate (s)) * G;
             u = v + s;
             s = u + v;
         }
@@ -56,6 +75,27 @@ public:
     }
 private:
     std::array<double, 4> state {};
+};
+
+// One-pole DC blocker. An odd saturator fed a zero-mean but asymmetric wave -
+// a narrow pulse, say - still rectifies it into a DC offset, which eats
+// headroom, pushes the waveform further into the saturator on one side, and
+// thumps as notes start and stop. Placed after the ladder and before the VCA,
+// so it sees a steady offset rather than one the amplitude envelope is scaling.
+class DCBlocker
+{
+public:
+    void prepare (double rate) { pole = 1.0 - 2.0 * 3.14159265358979323846 * 5.0 / rate; }
+    void reset() { previousInput = previousOutput = 0.0; }
+    float process (float x)
+    {
+        const double output = x - previousInput + pole * previousOutput;
+        previousInput = x;
+        previousOutput = output;
+        return (float) output;
+    }
+private:
+    double pole = 0.9998, previousInput = 0.0, previousOutput = 0.0;
 };
 
 // Finite-duration exponential segments. Time remains in seconds at every

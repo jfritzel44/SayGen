@@ -200,6 +200,8 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
 
     modernOscButton.setColour (juce::TextButton::buttonColourId, panelColour);
     modernOscButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
+    modernOscButton.setTooltip ("Advanced Oscillator Settings: Wave Mix's saw/pulse/triangle "
+                                 "blend and Motion's phase/unison controls");
     modernOscButton.onClick = [this]
     {
         velocityPanel.setVisible (false);
@@ -308,6 +310,11 @@ void MySynthAudioProcessorEditor::Content::mouseUp (const juce::MouseEvent& e)
 
     auto& slider = osc2TypeKnob.getSlider();
 
+    // Advanced Oscillator Settings' Modern flag is in charge instead;
+    // the knob is disabled but a stray click can still reach this listener
+    if (! slider.isEnabled())
+        return;
+
     // Only toggle if the drag (if any) didn't actually land on a different
     // waveform - comparing values rather than trusting JUCE's own drag
     // detection, since that alone wasn't reliably telling a plain click from
@@ -330,6 +337,47 @@ void MySynthAudioProcessorEditor::Content::timerCallback()
 
     midiLightOn = audioProcessor.midiActivity.exchange (false);
     repaint();
+
+    refreshOscTypeKnobs();
+}
+
+// Advanced Oscillator Settings' Modern flag makes an oscillator ignore its
+// main-screen waveform knob entirely (see MySynthVoice::updateVoiceParams).
+// Without this, turning that knob while Modern is on looks like it should
+// change the sound but silently does nothing - so grey the knob out and
+// label it, rather than leaving it looking live when it isn't.
+void MySynthAudioProcessorEditor::Content::refreshOscTypeKnobs()
+{
+    static const juce::Colour advancedColour (0xff5aa9e6);
+    static const juce::String advancedTooltip (
+        "Controlled by Advanced Oscillator Settings' Wave Mix instead of this knob");
+
+    const bool osc1Advanced = audioProcessor.osc1ModernOn.load();
+    if (osc1Advanced != osc1ShowingAdvanced)
+    {
+        osc1ShowingAdvanced = osc1Advanced;
+        oscTypeKnob.getSlider().setEnabled (! osc1Advanced);
+        oscTypeKnob.setStatusOverride (osc1Advanced ? "Adv" : "", advancedColour);
+        oscTypeKnob.getSlider().setTooltip (osc1Advanced ? advancedTooltip : juce::String());
+    }
+
+    const bool osc2Advanced = audioProcessor.osc2ModernOn.load();
+    if (osc2Advanced != osc2ShowingAdvanced)
+    {
+        osc2ShowingAdvanced = osc2Advanced;
+        osc2TypeKnob.getSlider().setEnabled (! osc2Advanced);
+        if (osc2Advanced)
+        {
+            osc2TypeKnob.setStatusOverride ("Adv", advancedColour);
+            osc2TypeKnob.getSlider().setTooltip (advancedTooltip);
+        }
+        else
+        {
+            osc2TypeKnob.getSlider().setTooltip (juce::String());
+            // Restores "Off"/"" per the knob's actual current value
+            osc2TypeKnob.getSlider().onValueChange();
+        }
+    }
 }
 
 void MySynthAudioProcessorEditor::Content::paint (juce::Graphics& g)

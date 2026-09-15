@@ -423,12 +423,63 @@ int MySynthAudioProcessor::getNumPrograms()
 
 int MySynthAudioProcessor::getCurrentProgram() { return currentProgram; }
 
+namespace
+{
+const char* const effectParamIDs[] =
+{
+    "gateOn",
+    "gateThresh",
+    "gateRatio",
+    "gateAttack",
+    "gateRelease",
+    "ladderOn",
+    "ladderCutoff",
+    "ladderRes",
+    "ladderDrive",
+    "chorusOn",
+    "chorusRate",
+    "chorusDepth",
+    "chorusMix",
+    "phaserOn",
+    "phaserRate",
+    "phaserDepth",
+    "phaserFeedback",
+    "phaserMix",
+    "reverbOn",
+    "reverbSize",
+    "reverbDamp",
+    "reverbWidth",
+    "reverbMix",
+    "delayOn",
+    "delayTime",
+    "delayFeedback",
+    "delayDamp",
+    "delayMix",
+    "compOn",
+    "compThresh",
+    "compRatio",
+    "compAttack",
+    "compRelease",
+    "limitOn",
+    "limitThresh",
+    "limitRelease",
+};
+}
+
 void MySynthAudioProcessor::setCurrentProgram (int index)
 {
     if (index < 0 || index >= (int) presets.size())
         return;
 
     currentProgram = index;
+    const bool useAdvancedVoicing = apvts.getRawParameterValue ("osc1ModernOn")->load() >= 0.5f
+                                 || apvts.getRawParameterValue ("osc2ModernOn")->load() >= 0.5f;
+
+    // Clear the effects panel, including bypassed controls, before loading
+    // the patch's own effects. Master volume remains a performance control.
+    for (auto id : effectParamIDs)
+        if (auto* param = apvts.getParameter (id))
+            param->setValueNotifyingHost (param->getDefaultValue());
 
     // Reset optional sound controls so patches cannot inherit another patch's settings.
     for (auto id : { "osc1Level", "osc2Level", "filterCompensation", "envelopeCurve",
@@ -440,6 +491,11 @@ void MySynthAudioProcessor::setCurrentProgram (int index)
     for (auto& [paramID, value] : presets[(size_t) index].values)
         if (auto* param = apvts.getParameter (paramID))
             param->setValueNotifyingHost (param->convertTo0to1 (value));
+
+    if (useAdvancedVoicing)
+        for (auto& [paramID, value] : presets[(size_t) index].advancedValues)
+            if (auto* param = apvts.getParameter (paramID))
+                param->setValueNotifyingHost (param->convertTo0to1 (value));
 }
 
 const juce::String MySynthAudioProcessor::getProgramName (int index)
@@ -476,6 +532,10 @@ void MySynthAudioProcessor::saveCurrentPatchAsPreset (const juce::String& name)
         if (auto* param = apvts.getParameter (paramID))
             preset.values.push_back ({ paramID, param->convertFrom0to1 (param->getValue()) });
 
+    for (auto* paramID : effectParamIDs)
+        if (auto* param = apvts.getParameter (paramID))
+            preset.values.push_back ({ paramID, param->convertFrom0to1 (param->getValue()) });
+
     presets.push_back (std::move (preset));
     currentProgram = (int) presets.size() - 1;
 
@@ -493,7 +553,11 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     lastAmpGain = 1.0f;
 
     synth.clearVoices();
-    for (int i = 0; i < 8; ++i)
+    // Eight voices runs out on sustained chords and pedalled passages, where
+    // the stealing is what gets heard rather than the notes. Voices cost
+    // nothing until they sound, and reassignment is now continuous
+    // (see MySynthVoice::stopNote), so the ceiling can be raised safely.
+    for (int i = 0; i < 16; ++i)
     {
         auto* voice = new MySynthVoice();
         voice->osc1PhaseMode = &osc1PhaseMode;
@@ -560,7 +624,14 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
                                   (juce::uint32) juce::jmax (1, getTotalNumOutputChannels()) };
     gate.prepare (spec);
     gate.reset();
-    ladder.prepare (spec);
+    // The ladder itself is prepared for the oversampled rate it will actually
+    // run at, so its cutoff coefficients stay correct.
+    ladderOversampling = std::make_unique<juce::dsp::Oversampling<float>> (
+        spec.numChannels, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
+    ladderOversampling->initProcessing ((size_t) juce::jmax (1, samplesPerBlock));
+    ladderOversampling->reset();
+    juce::dsp::ProcessSpec ladderSpec { spec.sampleRate * 2.0, spec.maximumBlockSize * 2, spec.numChannels };
+    ladder.prepare (ladderSpec);
     ladder.setMode (juce::dsp::LadderFilterMode::LPF24);
     ladder.reset();
     chorus.prepare (spec);
@@ -576,12 +647,11 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     phaser.prepare (spec);
     phaser.setCentreFrequency (1300.0f);
     phaser.reset();
-    reverb.prepare (spec);
-    reverb.reset();
-    delayLine.prepare (spec);
-    delayLine.setMaximumDelayInSamples ((int) (sampleRate * 2.0));
-    delayLine.reset();
-    delayDampState.assign (juce::jmax (1, (int) spec.numChannels), 0.0f);
+    reverb.prepare (sampleRate);
+    echo.prepare (sampleRate, (int) spec.numChannels);
+    masterGain.reset (sampleRate, 0.02);
+    masterGain.setCurrentAndTargetValue (
+        juce::Decibels::decibelsToGain (apvts.getRawParameterValue ("masterVolume")->load(), -60.0f));
     comp.prepare (spec);
     comp.reset();
     limiter.prepare (spec);
@@ -837,6 +907,12 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         if (lfoDest != 0)
             lfoValue = lfoSource == 4 ? lfoHeldRandom : lfoWaveSample (lfoSource, lfoPhase);
 
+        // The mod wheel scales the LFO's depth for every destination, not just
+        // pitch: the knob sets how far the wheel can take it, and the wheel
+        // decides how much of that is in play. A patch with modulation dialed
+        // in therefore sits still until the player brings the wheel up.
+        const float lfoDepth = lfoAmount * modWheelAmount.load();
+
         lfoPhase += lfoRateHz * chunkSize / getSampleRate();
         if (lfoPhase >= 1.0)
         {
@@ -844,18 +920,17 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             lfoHeldRandom = juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f;
         }
 
-        if (lfoDest == 1)        // Pitch: +/- one octave at full amount and full mod wheel
-            pitchSemitones.store (basePitchSemitones
-                + lfoValue * lfoAmount * modWheelAmount.load() * 12.0f);
-        else if (lfoDest == 2)   // Filter Cutoff: +/- 4 octaves at full amount
+        if (lfoDest == 1)        // Pitch: +/- one octave at full depth
+            pitchSemitones.store (basePitchSemitones + lfoValue * lfoDepth * 12.0f);
+        else if (lfoDest == 2)   // Filter Cutoff: +/- 4 octaves at full depth
             cutoffHz.store (juce::jlimit (20.0f, 20000.0f,
-                baseCutoffHz * std::pow (2.0f, lfoValue * lfoAmount * 4.0f)));
+                baseCutoffHz * std::pow (2.0f, lfoValue * lfoDepth * 4.0f)));
 
         synth.renderNextBlock (buffer, enhancedMidi, startSample, chunkSize);
 
         if (lfoDest == 3)        // Amp: tremolo, ramped across the sub-block
         {
-            const float gain = 1.0f - lfoAmount * 0.5f * (1.0f - lfoValue);
+            const float gain = 1.0f - lfoDepth * 0.5f * (1.0f - lfoValue);
             buffer.applyGainRamp (startSample, chunkSize, lastAmpGain, gain);
             lastAmpGain = gain;
         }
@@ -874,12 +949,19 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         gate.process (juce::dsp::ProcessContextReplacing<float> (block));
     }
 
-    if (apvts.getRawParameterValue ("ladderOn")->load() >= 0.5f)
+    if (apvts.getRawParameterValue ("ladderOn")->load() >= 0.5f && ladderOversampling != nullptr)
     {
         ladder.setCutoffFrequencyHz (apvts.getRawParameterValue ("ladderCutoff")->load());
         ladder.setResonance         (apvts.getRawParameterValue ("ladderRes")->load());
         ladder.setDrive             (apvts.getRawParameterValue ("ladderDrive")->load());
-        ladder.process (juce::dsp::ProcessContextReplacing<float> (block));
+        // Up, filter, down. The ladder's drive is a saturator, so at the host
+        // rate its own harmonics fold back down as aliasing; at 10x drive that
+        // is the most audible distortion left in the chain. The polyphase IIR
+        // halfband costs about three samples of delay, which is why it is only
+        // in circuit while this effect is on.
+        auto oversampled = ladderOversampling->processSamplesUp (block);
+        ladder.process (juce::dsp::ProcessContextReplacing<float> (oversampled));
+        ladderOversampling->processSamplesDown (block);
     }
 
     if (apvts.getRawParameterValue ("chorusOn")->load() >= 0.5f)
@@ -901,45 +983,28 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     if (apvts.getRawParameterValue ("reverbOn")->load() >= 0.5f)
     {
-        const auto mix = apvts.getRawParameterValue ("reverbMix")->load();
-        juce::Reverb::Parameters params;
-        params.roomSize = apvts.getRawParameterValue ("reverbSize")->load();
-        params.damping  = apvts.getRawParameterValue ("reverbDamp")->load();
-        params.width    = apvts.getRawParameterValue ("reverbWidth")->load();
-        params.wetLevel = mix;
-        params.dryLevel = 1.0f - mix;
-        reverb.setParameters (params);
-        reverb.process (juce::dsp::ProcessContextReplacing<float> (block));
+        reverb.setParameters (apvts.getRawParameterValue ("reverbSize")->load(),
+                              apvts.getRawParameterValue ("reverbDamp")->load(),
+                              apvts.getRawParameterValue ("reverbWidth")->load(),
+                              apvts.getRawParameterValue ("reverbMix")->load());
+        reverb.process (buffer.getWritePointer (0),
+                        buffer.getNumChannels() > 1 ? buffer.getWritePointer (1) : nullptr,
+                        buffer.getNumSamples());
+        // Any bus wider than stereo gets the stereo result folded down, the
+        // same convention the voice renderer uses for its extra channels.
+        for (int ch = 2; ch < buffer.getNumChannels(); ++ch)
+            juce::FloatVectorOperations::copy (buffer.getWritePointer (ch),
+                                               buffer.getReadPointer (0), buffer.getNumSamples());
     }
 
     if (apvts.getRawParameterValue ("delayOn")->load() >= 0.5f)
     {
-        const float delayTimeSec = apvts.getRawParameterValue ("delayTime")->load();
-        const float feedback     = apvts.getRawParameterValue ("delayFeedback")->load();
-        const float damp         = apvts.getRawParameterValue ("delayDamp")->load();
-        const float mix          = apvts.getRawParameterValue ("delayMix")->load();
-
-        delayLine.setDelay (delayTimeSec * (float) getSampleRate());
-
-        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-        {
-            auto* data = buffer.getWritePointer (ch);
-            float& dampState = delayDampState[(size_t) ch];
-
-            for (int i = 0; i < buffer.getNumSamples(); ++i)
-            {
-                const float in  = data[i];
-                const float tap = delayLine.popSample (ch);
-
-                // One-pole lowpass inside the feedback loop, so each repeat
-                // comes back a little darker than the one before it (tape-
-                // echo style) instead of every repeat being a pristine copy
-                dampState += damp * (tap - dampState);
-
-                delayLine.pushSample (ch, in + dampState * feedback);
-                data[i] = in + (tap - in) * mix;
-            }
-        }
+        echo.setParameters (apvts.getRawParameterValue ("delayTime")->load(),
+                            apvts.getRawParameterValue ("delayFeedback")->load(),
+                            apvts.getRawParameterValue ("delayDamp")->load(),
+                            apvts.getRawParameterValue ("delayMix")->load());
+        echo.process (buffer.getArrayOfWritePointers(), buffer.getNumChannels(),
+                      buffer.getNumSamples());
     }
 
     if (apvts.getRawParameterValue ("compOn")->load() >= 0.5f)
@@ -960,8 +1025,13 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     // Final output gain stage: independent of the amp envelope, applied
     // after every effect so it's the true last thing to touch the signal
+    // Ramped across the block: a once-per-block jump in gain is a step in the
+    // waveform, which is what makes a swept volume knob buzz.
     const float masterVolumeDb = apvts.getRawParameterValue ("masterVolume")->load();
-    buffer.applyGain (juce::Decibels::decibelsToGain (masterVolumeDb, -60.0f));
+    masterGain.setTargetValue (juce::Decibels::decibelsToGain (masterVolumeDb, -60.0f));
+    const float gainFrom = masterGain.getCurrentValue();
+    masterGain.skip (buffer.getNumSamples());
+    buffer.applyGainRamp (0, buffer.getNumSamples(), gainFrom, masterGain.getCurrentValue());
 
     oscilloscope.pushBuffer (buffer);
     outputMeter.pushBuffer (buffer);

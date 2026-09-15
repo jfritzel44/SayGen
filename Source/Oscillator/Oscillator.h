@@ -75,6 +75,8 @@ struct MySynthVoice : public juce::SynthesiserVoice
         return dynamic_cast<MySynthSound*> (sound) != nullptr;
     }
 
+    MySynthVoice() { deriveTolerances(); }
+
     // For reproducible offline rendering; never changes JUCE's global RNG.
     void setOscillatorSeed (uint32_t seed)
     {
@@ -82,10 +84,17 @@ struct MySynthVoice : public juce::SynthesiserVoice
         random.setSeed (motionSeed);
         motionRate = 0;
         phaseInitialised = false;
+        deriveTolerances();
     }
 
     void startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound*, int) override
     {
+        // Set by stopNote() when the synthesiser is about to steal this voice
+        // while it is still sounding. Everything that would step the output -
+        // oscillator phase, filter and decimator state, envelope level and the
+        // velocity gain - is carried over instead of being reset to silence.
+        const bool continuing = reassigning;
+        reassigning = false;
         renderRate = getSampleRate() * 4;
         if (motionRate != renderRate)
         {
@@ -95,8 +104,19 @@ struct MySynthVoice : public juce::SynthesiserVoice
                 for (int u = 0; u < kMaxUnisonVoices; ++u)
                     oscillators[bank][u].drift.prepare (renderRate, motionSeed + 7919u * (1 + bank * 7 + u));
         }
-        glide.reset (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber),
-                     shapeVelocity (velocity, read (velocityCurve, 0)));
+        const double hz = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
+        const double shaped = shapeVelocity (velocity, read (velocityCurve, 0));
+        if (continuing)
+        {
+            // Pitch takes the new note immediately; the velocity gain ramps,
+            // so a steal never steps the VCA.
+            glide.reset (hz, glide.getLevel());
+            glide.target (hz, shaped, 0.005, renderRate);
+        }
+        else
+            glide.reset (hz, shaped);
+        // Only the slots that were actually sounding carry their phase over.
+        const int sounding[] = { continuing ? count[0] : 0, continuing ? count[1] : 0 };
         count[0] = juce::jlimit (1, kMaxUnisonVoices, read (osc1UnisonVoices, 1));
         count[1] = juce::jlimit (1, kMaxUnisonVoices, read (osc2UnisonVoices, 1));
         phaseMode[0] = read (osc1PhaseMode, 0);
@@ -110,10 +130,18 @@ struct MySynthVoice : public juce::SynthesiserVoice
             {
                 auto& osc = oscillators[bank][u];
                 osc.spread = count[bank] <= 1 ? 0.0 : 2.0 * u / (count[bank] - 1) - 1.0;
+                if (u < sounding[bank])
+                {
+                    // Keep the running phase and its pending BLEP tail: a
+                    // sounding waveform has no onset to place, and restarting
+                    // it is what a steal is normally heard as.
+                    osc.detune.reset (renderRate, 0.01);
+                    continue;
+                }
                 if (phaseMode[bank] != 2 || ! phaseInitialised)
                 {
                     const double offset = phaseMode[bank] == 1 ? randomness * random.nextDouble() : 0;
-                    const double phase = startPhase[bank] + (double) u / count[bank] + offset;
+                    const double phase = startPhase[bank] + unisonPhase (u, bank) + offset;
                     osc.wave.setPhase (phase, phase * 0.5);
                 }
                 // A muted interval advances phase without computing BLEP tails.
@@ -138,28 +166,36 @@ struct MySynthVoice : public juce::SynthesiserVoice
         updateControls (true);
         cachedWidth = -1;
         updatePan();
-        for (auto& filter : ladder) filter.reset();
-        for (auto& d : decimator) d.reset();
         ampEnvelope.prepare (renderRate); filterEnvelope.prepare (renderRate);
-        ampEnvelope.reset(); filterEnvelope.reset();
+        for (auto& b : blocker) b.prepare (renderRate);
+        if (! continuing)
+        {
+            for (auto& filter : ladder) filter.reset();
+            for (auto& b : blocker) b.reset();
+            for (auto& d : decimator) d.reset();
+            ampEnvelope.reset(); filterEnvelope.reset();
+        }
         updateEnvelopes();
         ampEnvelope.noteOn(); filterEnvelope.noteOn();
         tailSamples = 33;
         active = true;
     }
 
-    void stopNote (float, bool allowTailOff) override
+    void stopNote (float velocity, bool allowTailOff) override
     {
         if (allowTailOff)
         {
             ampEnvelope.noteOff(); filterEnvelope.noteOff();
+            return;
         }
-        else
-        {
-            ampEnvelope.reset(); filterEnvelope.reset();
-            active = false;
-            clearCurrentNote();
-        }
+        // juce::Synthesiser signals a voice steal as stopNote (0, false)
+        // immediately before calling startNote() on this voice; its hard
+        // stops (all-notes-off, sample-rate changes) pass velocity 1. Only a
+        // steal keeps state, so a panic still silences the voice outright.
+        reassigning = velocity == 0.0f && ampEnvelope.isActive();
+        if (! reassigning) { ampEnvelope.reset(); filterEnvelope.reset(); }
+        active = false;
+        clearCurrentNote();
     }
 
     void setGlideTarget (int note, float velocity, float seconds)
@@ -211,15 +247,15 @@ struct MySynthVoice : public juce::SynthesiserVoice
             }
             const double tracking = trackingSmooth.getNextValue()
                 * std::log2 (glide.getFrequency() / 261.6255653005986);
-            const double cutoff = juce::jlimit (20.0, maxCutoff, cutoffSmooth.getNextValue()
+            const double cutoff = juce::jlimit (20.0, maxCutoff, cutoffSmooth.getNextValue() * cutoffTrim
                 * std::exp2 (envAmountSmooth.getNextValue() * filterEnvelope.next() + tracking));
             const double G = syngen::FeedbackLadder::coefficient (cutoff, renderRate);
-            const double resonance = (resonanceSmooth.getNextValue() - 0.5) * (4.2 / 9.5);
+            const double resonance = (resonanceSmooth.getNextValue() - 0.5) * (4.2 / 9.5) * resonanceTrim;
             const float drive = (float) (1 + 7 * driveSmooth.getNextValue());
             const double compensation = compensationSmooth.getNextValue();
             const float vca = ampEnvelope.next() * (float) glide.getLevel() / std::sqrt (drive);
-            float outL = ladder[0].process (mixed[0] * 0.3f * drive, G, resonance, compensation) * vca;
-            float outR = mono ? outL : ladder[1].process (mixed[1] * 0.3f * drive, G, resonance, compensation) * vca;
+            float outL = blocker[0].process (ladder[0].process (mixed[0] * 0.3f * drive, G, resonance, compensation)) * vca;
+            float outR = mono ? outL : blocker[1].process (ladder[1].process (mixed[1] * 0.3f * drive, G, resonance, compensation)) * vca;
             decimator[0].push (outL);
             if (! mono) decimator[1].push (outR);
             if (n % 4 == 3)
@@ -251,6 +287,36 @@ struct MySynthVoice : public juce::SynthesiserVoice
     void controllerMoved (int, int) override {}
 
 private:
+    // Component tolerance for this voice, fixed for its lifetime and derived
+    // from the same seed the drift generators use, so offline renders stay
+    // reproducible. No two analog filters are trimmed identically; without
+    // this every voice is numerically identical and chords collapse into one
+    // sterile, phase-locked timbre. Depth is scaled by the Drift control, so
+    // driftAmount == 0 still renders a perfectly matched pair of filters.
+    // Start phase of unison voice u. Evenly spaced phases make N sawtooths sum
+    // to one sawtooth at N times the pitch and 1/N the amplitude: a 5-voice
+    // stack began about 13 dB down and swelled over ~100 ms as detuning pulled
+    // the voices apart. An incoherent scatter starts at the same level the
+    // detuned stack settles to. Deterministic, and exactly 0 for the first
+    // voice, so a single unvoiced oscillator keeps its authored start phase.
+    static double unisonPhase (int u, int bank)
+    {
+        if (u == 0) return 0.0;
+        uint32_t h = (uint32_t) u * 2654435761u + (uint32_t) bank * 40503u;
+        h ^= h >> 15; h *= 2246822519u; h ^= h >> 13; h *= 3266489917u; h ^= h >> 16;
+        return (double) h / 4294967296.0;
+    }
+    void deriveTolerances()
+    {
+        uint32_t h = motionSeed != 0 ? motionSeed : 1;
+        auto bipolar = [&h]
+        {
+            h ^= h << 13; h ^= h >> 17; h ^= h << 5;
+            return (double) h / 2147483647.5 - 1.0;
+        };
+        cutoffTolerance = 0.04 * bipolar();     // +/- 0.04 octaves, about 2.8%
+        resonanceTolerance = 0.03 * bipolar();  // +/- 3% of the feedback gain
+    }
     template <typename T> static T read (std::atomic<T>* parameter, T fallback)
     {
         return parameter ? parameter->load() : fallback;
@@ -283,6 +349,9 @@ private:
         target (compensationSmooth, read (filterCompensation, 0.5f), initialise);
         target (envAmountSmooth, read (envAmountOct, 0), initialise);
         target (trackingSmooth, read (kbTrackAmount, 0), initialise);
+        const double tolerance = juce::jlimit (0.0, 1.0, read (driftAmount, 1));
+        cutoffTrim = std::exp2 (tolerance * cutoffTolerance);
+        resonanceTrim = 1.0 + tolerance * resonanceTolerance;
         const bool modern[] = { read (osc1ModernOn, false), read (osc2ModernOn, false) };
         const int wave[] = { read (oscType, 0), read (osc2Type, 0) - 1 };
         const double saw[] = { read (osc1SawMix, 1), read (osc2SawMix, 1) };
@@ -331,9 +400,14 @@ private:
             for (int u = 0; u < count[bank]; ++u)
             {
                 auto& osc = oscillators[bank][u];
+                // Constant power, normalised to unity at centre. Plain cos/sin
+                // puts 0.707 in each channel there, 3 dB below the unity a
+                // single centred voice used to get from its own special case,
+                // so switching unison on made the voice quieter and under-drove
+                // the filter by the same 3 dB. At centre this is exactly 1.
                 const double angle = (osc.spread * widthNow + 1) * juce::MathConstants<double>::pi * 0.25;
-                osc.panLeft = count[bank] == 1 ? 1.0f : (float) std::cos (angle);
-                osc.panRight = count[bank] == 1 ? 1.0f : (float) std::sin (angle);
+                osc.panLeft = (float) (juce::MathConstants<double>::sqrt2 * std::cos (angle));
+                osc.panRight = (float) (juce::MathConstants<double>::sqrt2 * std::sin (angle));
             }
     }
     void oscillatorSteps (double (&steps)[2][kMaxUnisonVoices])
@@ -397,7 +471,8 @@ private:
     juce::Random random;
     uint32_t motionSeed = (uint32_t) random.nextInt();
     double renderRate = 176400, motionRate = 0;
-    bool active = false, phaseInitialised = false, syncEnabled = false;
+    bool active = false, phaseInitialised = false, syncEnabled = false, reassigning = false;
+    double cutoffTolerance = 0, resonanceTolerance = 0, cutoffTrim = 1, resonanceTrim = 1;
     int count[2] { 1, 1 }, phaseMode[2] {}, tailSamples = 33;
     float gain[2] { 1, 1 };
     double cachedTuning[2] {}, tuningRatio[2] { 1, 1 }, cachedWidth = -1;
@@ -406,6 +481,7 @@ private:
     juce::SmoothedValue<double> envAmountSmooth, trackingSmooth;
     juce::SmoothedValue<double, juce::ValueSmoothingTypes::Multiplicative> cutoffSmooth;
     syngen::FeedbackLadder ladder[2];
+    syngen::DCBlocker blocker[2];
     syngen::Decimator4 decimator[2];
     syngen::CurveEnvelope ampEnvelope, filterEnvelope;
 };

@@ -13,7 +13,7 @@ public:
                       const juce::String& parameterID,
                       const juce::String& title)
         : attachment (*apvts.getParameter (parameterID), [this] (float v)
-                      { on = v >= 0.5f; repaint(); }),
+                      { on = v >= 0.5f; repaint(); if (onToggle) onToggle(); }),
           titleText (title)
     {
         onImage  = cropToContent (juce::ImageCache::getFromMemory (BinaryData::toggle_on_png,
@@ -27,6 +27,12 @@ public:
     {
         attachment.setValueAsCompleteGesture (on ? 0.0f : 1.0f);
     }
+
+    bool isOn() const { return on; }
+
+    // Fires after `on` changes, whether from a click here or a host/other-UI
+    // change to the underlying parameter.
+    std::function<void()> onToggle;
 
     void paint (juce::Graphics& g) override
     {

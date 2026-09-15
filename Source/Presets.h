@@ -12,6 +12,8 @@ struct Preset
     // MySynthAudioProcessorEditor::Content::rebuildPresetMenu().
     juce::String category;
     std::vector<std::pair<juce::String, float>> values; // paramID -> value (plain range)
+    // Optional factory voicing when either Wave Mix oscillator is enabled.
+    std::vector<std::pair<juce::String, float>> advancedValues {};
 };
 
 //==============================================================================
@@ -109,6 +111,9 @@ inline const std::vector<Preset>& getFactoryPresets()
               { "fltDecay",   0.35f },
               { "fltSustain", 0.6f },
               { "fltRelease", 0.3f },
+              // Limit the twin-saw chord peaks. Preset loading resets the
+              // limiter controls so an earlier aggressive setting cannot carry over.
+              { "limitOn",    1.0f },
           } },
 
         // "Jump New" — a chorused take on "Jump": same twin-saw OB-Xa engine,
@@ -138,6 +143,7 @@ inline const std::vector<Preset>& getFactoryPresets()
               { "chorusRate",   0.8f },
               { "chorusDepth",  0.35f },
               { "chorusMix",    0.55f },
+              { "limitOn",      1.0f },
           } },
 
         // "Jump2" — a warmer, fuller take on "Jump": the phaser is gone
@@ -173,6 +179,7 @@ inline const std::vector<Preset>& getFactoryPresets()
               { "reverbDamp",   0.7f },
               { "reverbWidth",  1.0f },
               { "reverbMix",    0.12f },
+              { "limitOn",      1.0f },
           } },
 
         // "Memories" — Jump's engine dropped an octave with a darker, resonant
@@ -196,6 +203,7 @@ inline const std::vector<Preset>& getFactoryPresets()
               { "fltDecay",   0.35f },
               { "fltSustain", 0.6f },
               { "fltRelease", 0.3f },
+              { "limitOn",    1.0f },
           } },
 
         // "Drift" — slow-swelling poly pad: wide detune for a lush, chorused
@@ -425,6 +433,28 @@ inline const std::vector<Preset>& getFactoryPresets()
               { "fltRelease", 0.1f },
               { "glideOn",    1.0f },
               { "glideTime",  0.055f },
+              { "unisonVoices", 1.0f },
+              { "driftAmount", 1.0f },
+              { "overload", 0.0f },
+              { "kbAmount", 0.0f },
+          },
+          {
+              { "osc1SawMix", 0.8f },
+              { "osc1PulseMix", 0.0f },
+              { "osc1TriMix", 0.2f },
+              { "osc1PulseWidth", 0.5f },
+              { "osc2SawMix", 0.7f },
+              { "osc2PulseMix", 0.0f },
+              { "osc2TriMix", 0.3f },
+              { "osc2PulseWidth", 0.5f },
+              { "osc1Level", 0.85f },
+              { "osc2Level", 0.8f },
+              { "filterCompensation", 0.3f },
+              { "envelopeCurve", 0.25f },
+              { "driftAmount", 0.2f },
+              { "osc1SubOctave", 0.0f },
+              { "osc2SubOctave", 0.0f },
+              { "unisonVoices", 1.0f },
           } },
 
         // "Reggae Woman" - Boogie On Reggae Woman-style TONTO/Moog bass:
@@ -451,39 +481,91 @@ inline const std::vector<Preset>& getFactoryPresets()
               { "fltRelease", 0.18f },
               { "glideOn",    1.0f },
               { "glideTime",  0.14f },
+              { "unisonVoices", 1.0f },
+              { "driftAmount", 1.0f },
+              { "overload", 0.0f },
+              { "kbAmount", 0.0f },
+          },
+          {
+              { "osc1SawMix", 0.35f },
+              { "osc1PulseMix", 0.15f },
+              { "osc1TriMix", 0.5f },
+              { "osc1PulseWidth", 0.5f },
+              { "osc2SawMix", 0.25f },
+              { "osc2PulseMix", 0.15f },
+              { "osc2TriMix", 0.6f },
+              { "osc2PulseWidth", 0.48f },
+              { "osc1Level", 0.85f },
+              { "osc2Level", 0.75f },
+              { "filterCompensation", 0.25f },
+              { "envelopeCurve", 0.35f },
+              { "driftAmount", 0.15f },
+              { "osc1SubOctave", 0.0f },
+              { "osc2SubOctave", 0.0f },
+              { "unisonVoices", 1.0f },
           } },
 
-        // "Chameleon" - after Herbie Hancock's ARP Odyssey bass line on the
-        // Head Hunters title track: twin saws standing in for the Odyssey's
-        // two VCOs, barely detuned for a bit of edge rather than a smooth
-        // blend, run into a resonant filter with a fast, deep envelope
-        // sweep so every note "pops" open before settling back down - the
-        // percussive, vocal-sounding quack the part is built around.
-        // Overload adds the mild grit real Odyssey filters have driven
-        // hard, and a short glide handles the line's slides between notes.
+        // Pulse-led Chameleon reconstruction: upper 40% pulse over a louder
+        // square one octave below. The filter plucks while the amp holds.
+        // Adapted to our ladder from the Syntorial Chameleon bass recipe;
+        // classic mode uses squares in place of variable-width pulses.
         { "Chameleon", "Bass",
           {
-              { "oscType",    1.0f },     // Sawtooth
-              { "osc2Type",   2.0f },     // Sawtooth
-              { "osc1Octave", 0.0f },     // 16'
+              { "oscType",    2.0f },
+              { "osc2Type",   3.0f },
+              { "osc1Octave", 1.0f },
               { "osc2Octave", 0.0f },     // 16'
-              { "detune",     6.0f },
+              { "detune",     1.5f },
               { "pitch",      0.0f },
               { "attack",     0.002f },
-              { "decay",      0.22f },
-              { "sustain",    0.55f },
-              { "release",    0.12f },
-              { "overload",   0.35f },
+              { "decay",      0.15f },
+              { "sustain",    1.0f },
+              { "release",    0.08f },
+              { "overload",   0.05f },
               { "kbAmount",   0.3f },
-              { "cutoff",     800.0f },
-              { "resonance",  4.5f },
-              { "envAmount",  3.0f },
+              { "cutoff",     420.0f },
+              { "resonance",  6.2f },
+              { "envAmount",  2.8f },
               { "fltAttack",  0.002f },
-              { "fltDecay",   0.22f },
-              { "fltSustain", 0.15f },
-              { "fltRelease", 0.13f },
+              { "fltDecay",   0.25f },
+              { "fltSustain", 0.0f },
+              { "fltRelease", 0.025f },
               { "glideOn",    1.0f },
-              { "glideTime",  0.06f },
+              { "glideTime",  0.018f },
+              { "unisonVoices", 1.0f },
+              { "driftAmount", 0.12f },
+              { "oscSync", 0.0f },
+              { "osc1Level", 0.5f },
+              { "osc2Level", 0.9f },
+              { "filterCompensation", 0.35f },
+              { "envelopeCurve", 0.55f },
+              { "lfoAmount", 0.0f },
+              { "gateOn", 0.0f },
+              { "ladderOn", 0.0f },
+              { "chorusOn", 0.0f },
+              { "phaserOn", 0.0f },
+              { "reverbOn", 0.0f },
+              { "delayOn", 0.0f },
+              { "compOn", 0.0f },
+              { "limitOn", 1.0f },
+          },
+          {
+              { "osc1SawMix", 0.0f },
+              { "osc1PulseMix", 1.0f },
+              { "osc1TriMix", 0.0f },
+              { "osc1PulseWidth", 0.4f },
+              { "osc2SawMix", 0.0f },
+              { "osc2PulseMix", 1.0f },
+              { "osc2TriMix", 0.0f },
+              { "osc2PulseWidth", 0.5f },
+              { "osc1Level", 0.5f },
+              { "osc2Level", 0.9f },
+              { "filterCompensation", 0.35f },
+              { "envelopeCurve", 0.55f },
+              { "driftAmount", 0.12f },
+              { "osc1SubOctave", 0.0f },
+              { "osc2SubOctave", 0.0f },
+              { "unisonVoices", 1.0f },
           } },
     };
     return presets;

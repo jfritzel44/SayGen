@@ -1,5 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
+#include "Effects/FDNReverb.h"
+#include "Effects/TapeEcho.h"
 #include "Oscillator/Oscillator.h"
 #include "Oscilloscope.h"
 #include "OutputMeter.h"
@@ -62,12 +64,12 @@ public:
     std::atomic<bool>  glideOn         { false };
     std::atomic<float> glideTimeSeconds{ 0.08f };
 
-    // Mod wheel (MIDI CC1) position, 0-1. Gates the LFO's pitch-vibrato
-    // depth (see processBlock) so a patch with vibrato dialed in stays
-    // still until the wheel is raised, the way a real analog synth's
-    // vibrato works, rather than warbling for the entire time a note is
-    // held. Filter/amp LFO destinations aren't gated by it - those are
-    // meant to run continuously once dialed in (auto-wah, tremolo).
+    // Mod wheel (MIDI CC1) position, 0-1. Scales the LFO's depth for every
+    // destination - pitch, filter and amp alike (see processBlock). LFO Amount
+    // sets the ceiling and the wheel decides how much of it is in play, so a
+    // patch with modulation dialed in stays still until the wheel is raised,
+    // the way an analog synth's vibrato does. With the wheel down the LFO has
+    // no effect at all, whichever destination is selected.
     std::atomic<float> modWheelAmount { 0.0f };
 
     // How far a full pitch-wheel deflection bends the pitch, in semitones;
@@ -145,9 +147,14 @@ private:
     juce::dsp::LadderFilter<float> ladder;
     juce::dsp::Chorus<float> chorus;
     juce::dsp::Phaser<float> phaser;
-    juce::dsp::Reverb reverb;
-    juce::dsp::DelayLine<float> delayLine;
-    std::vector<float> delayDampState;  // one-pole lowpass state in the feedback path, per channel
+    syngen::FDNReverb reverb;
+    syngen::TapeEcho echo;
+    // 2x oversampling around the master ladder only. Its drive reaches 10x,
+    // and a saturator at the host rate folds everything it generates above
+    // Nyquist back into the audio band; the voices already run at 4x, so this
+    // was the one nonlinearity in the chain still aliasing at base rate.
+    std::unique_ptr<juce::dsp::Oversampling<float>> ladderOversampling;
+    juce::SmoothedValue<float> masterGain;
     juce::dsp::Compressor<float> comp;
     juce::dsp::Limiter<float> limiter;
     int currentProgram = 0;

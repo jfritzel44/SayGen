@@ -46,6 +46,68 @@ int main()
                 }
             }
     }
+    // Per-stage saturation must leave the small-signal response exactly where
+    // the linear model had it, then compress progressively as the level rises,
+    // including at the resonant peak where a single junction clipper barely
+    // acts. Measured at the cutoff, which is where the stage gains dominate.
+    {
+        constexpr double rate = 192000, cutoff = 1000;
+        const double G = syngen::FeedbackLadder::coefficient (cutoff, rate);
+        auto peakGain = [&] (double level, double resonance)
+        {
+            syngen::FeedbackLadder filter;
+            double peak = 0;
+            for (int n = 0; n < 120000; ++n)
+            {
+                const float y = filter.process ((float) (level * std::sin (2 * pi * cutoff * n / rate)),
+                                                G, resonance, 0);
+                if (n > 90000) peak = std::max (peak, (double) std::abs (y));
+            }
+            return peak / level;
+        };
+        const double tiny = peakGain (1e-5, 3.5), quiet = peakGain (1e-4, 3.5);
+        require (std::abs (tiny / quiet - 1) < 0.001, "small-signal resonant gain stays linear");
+        double previous = quiet;
+        for (double level : { 1e-2, 0.1, 0.3, 1.0 })
+        {
+            const double gain = peakGain (level, 3.5);
+            require (gain > 0 && gain < previous, "driven ladder gain compresses monotonically");
+            previous = gain;
+        }
+        require (previous < 0.2 * quiet, "hard drive compresses the resonant peak by at least 14 dB");
+        std::cout << "Ladder resonant peak gain: quiet " << quiet << ", driven " << previous << '\n';
+        // Each stage settles on its input at DC, so the cascade still passes a
+        // small steady level at unity and only the junction bounds a hot one.
+        for (double level : { 0.001, 1.0 })
+        {
+            syngen::FeedbackLadder filter;
+            float y = 0;
+            for (int n = 0; n < 120000; ++n) y = filter.process ((float) level, G, 0, 0);
+            require (level > 0.5 ? y < 0.8f && y > 0.7f : std::abs (y / level - 1) < 1e-4,
+                     "ladder DC gain is unity below saturation and bounded above it");
+        }
+    }
+    // The DC blocker has to remove a steady offset outright while leaving the
+    // audio band alone: an odd saturator fed an asymmetric wave rectifies it
+    // into DC, and at 5 Hz the corner is far below anything musical.
+    {
+        syngen::DCBlocker blocker;
+        blocker.prepare (192000);
+        float y = 0;
+        for (int n = 0; n < 400000; ++n) y = blocker.process (1.0f);
+        require (std::abs (y) < 1e-3f, "DC blocker rejects a steady offset");
+        for (double tone : { 50.0, 1000.0 })
+        {
+            blocker.reset();
+            double peak = 0;
+            for (int n = 0; n < 200000; ++n)
+            {
+                const float out = blocker.process ((float) std::sin (2 * pi * tone * n / 192000.0));
+                if (n > 100000) peak = std::max (peak, (double) std::abs (out));
+            }
+            require (std::abs (peak - 1) < 0.01, "DC blocker passes the audio band at unity");
+        }
+    }
     for (double f : { 0.0, 0.05, 0.14, 0.2, 0.4 })
     {
         syngen::Decimator4 d;
