@@ -64,6 +64,73 @@ Resonance reaches 4.2 feedback gain; self-oscillation is permitted.
 Cutoff uses 5 ms smoothing; level, drive, resonance and compensation use 10 ms.
 The filter envelope is applied after cutoff smoothing, preserving fast attacks.
 
+## Effects
+
+The effects chain was the last part of the signal path still running stock
+building blocks, and it was where most of the remaining audible trouble was.
+
+**Reverb** is now an eight-line feedback delay network in place of Freeverb.
+Freeverb's four fixed comb lengths per channel put their modal peaks far enough
+apart to be heard individually: sustained chords rang metallic and short decays
+fluttered. An FDN couples every line to every other through an orthonormal
+8×8 Hadamard, applied as a fast Walsh-Hadamard transform (24 adds rather than
+64 multiply-accumulates), so mode density is high from the first millisecond and
+the mixing itself is lossless — the per-line gains alone set the decay and the
+network cannot run away. Four Dattorro allpasses per channel diffuse the input
+first. Each line carries a one-pole low-pass for the damping control and a
+matching 18 Hz low cut, without which a long decay slowly integrates whatever
+sub-bass and DC the synth hands it into rumble. Delay lengths are modulated by
+sub-Hz sines at ±0.18 ms, staggered in phase so no two lines sweep together;
+reads are Catmull-Rom, since linear interpolation's high-frequency loss varies
+with the fractional part and a swept line would amplitude-modulate its own top
+end. Size scales both the line lengths and RT60 (0.25 s to 5.25 s), damping
+sweeps the in-loop corner from 20 kHz to 500 Hz, and every derived coefficient
+is smoothed over 50 ms so size and damping can be swept live.
+
+Wet/dry is now an equal-power crossfade that is exactly unity dry at mix 0.
+Freeverb was scaling dry by 2 and wet by 3 internally, so merely switching the
+reverb on with the mix down lifted the whole output by 6 dB, and at the default
+0.35 mix it ran 3.5–5.2 dB hot. Measured against a band-limited source at
+48 kHz, the network now sits between −3.4 dB (size 0.3) and +0.7 dB (size 0.85)
+of the dry signal when fully wet, and total output stays within 0.7 dB of dry at
+the default mix. The wet-to-dry balance lands about 1.8 dB drier than Freeverb's
+at the same knob position, so patches carried over may want slightly more mix.
+
+**Delay** is a new stereo echo. Three things changed. The damping amount was
+previously used directly as the feedback filter's one-pole coefficient, so
+"no damping" set the coefficient to zero, stalled the filter at silence and cut
+every undamped patch off after a single repeat; it now maps to a filter corner
+(20 kHz down to 400 Hz) and undamped repeats decay properly. The read distance
+is smoothed rather than jumped, so moving the time control glides the way tape
+does instead of clicking — with the head's velocity capped at half a sample per
+sample, since a plain one-pole would start a full-range jump reading at eleven
+times speed. And the loop carries a 70 Hz low cut and a soft saturator, so long
+feedback settings settle into a bounded, slightly compressed tail.
+
+**Master ladder** runs inside 2× polyphase-IIR oversampling. Its drive reaches
+10× and is a saturator, so at the host rate everything it generated above
+Nyquist folded back into the audio band; the voices have been oversampled since
+the last change, which left this as the one nonlinearity in the chain still
+aliasing at base rate. The halfband costs 3.14 samples of delay (0.065 ms at
+48 kHz), and is only in circuit while the effect is on, so it is not reported as
+plugin latency.
+
+**Master volume** is ramped across the block rather than applied as a
+once-per-block jump, which is what made a swept volume knob buzz.
+
+The reverb costs about 0.36% of one core and the echo 0.06%, measured on ten
+seconds of stereo at 48 kHz on this machine.
+
+## Modulation
+
+The mod wheel (CC1) scales the LFO's depth for every destination — pitch,
+filter and amp alike — rather than only gating pitch vibrato. LFO Amount sets
+the ceiling and the wheel decides how much of it is in play, so a patch with
+modulation dialed in stays still until the wheel is raised. With the wheel down
+the LFO has no effect at all, whichever destination is selected, and there is
+no on-screen wheel yet: a controller sending CC1 is currently the only way to
+open it up.
+
 ## Voice allocation
 
 Polyphony is 16. Voices cost nothing until they sound, so the ceiling only
@@ -134,7 +201,15 @@ post-filter velocity scaling, buffer-size invariance with drift disabled, mixer
 silence, release-tail flushing, continuous voice stealing against outright hard
 stops, per-voice tolerance under Drift, DC rejection with audio-band unity gain,
 unison level flatness and attack coherence, extreme notes/unison/sync, scheduled
-note onset and state migration. Timing output is a local microbenchmark, not a DAW
+note onset and state migration. Effects tests cover, at all three sample rates,
+reverb decay against the requested RT60, tail density (the flutter Freeverb was
+replaced for), damping removing high frequencies rather than just shortening the
+tail, width 0 collapsing to mono and width 1 decorrelating, boundedness at
+maximum decay under sustained full-scale noise, echo repeat timing and
+multi-repeat decay with damping off, repeats darkening as they decay, a time
+sweep gliding rather than stepping, boundedness at maximum feedback,
+transparency at mix 0, and mono-bus rendering for both.
+Timing output is a local microbenchmark, not a DAW
 performance guarantee. The Release run on this machine rendered one second at
 48 kHz in approximately 41 ms for one note without unison, and 71 ms with seven
 voices per oscillator; the stage saturation costs roughly 15% and 10% of those.
@@ -158,7 +233,8 @@ Sylenth1. Listen at matched loudness with effects disabled before judging it.
 Oversampling reduces aliasing; it does not eliminate all aliasing from extreme
 sync or nonlinearities, and the per-stage saturation adds some of its own.
 Enhanced sync currently uses fractional reset timing at 4× and output filtering,
-rather than a dedicated BLEP reset correction. Effects still run at the host rate.
+rather than a dedicated BLEP reset correction. Apart from the master ladder,
+effects still run at the host rate; the chorus and phaser are still stock JUCE.
 No selectable quality modes are exposed yet. Stealing hands over continuously but
 does not crossfade two oscillator sets, so a stolen voice changes pitch abruptly.
 

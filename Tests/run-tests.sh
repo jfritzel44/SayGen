@@ -14,6 +14,8 @@ clang++ -std=c++17 -O2 -Wall -Wextra -pedantic Tests/EnhancedDSPTests.cpp -o "$T
 "$TASK_TEST_DIR/dsp-tests"
 clang++ -std=c++17 -O2 -Wall -Wextra Tests/OscillatorMotionTests.cpp -o "$TASK_TEST_DIR/motion-tests"
 "$TASK_TEST_DIR/motion-tests"
+clang++ -std=c++17 -O2 -Wall -Wextra -pedantic Tests/EffectsTests.cpp -o "$TASK_TEST_DIR/effects-tests"
+"$TASK_TEST_DIR/effects-tests"
 clang++ -std=c++17 -O2 "$TASK_TEST_DEFINE" -DJUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1 \
     -DJUCE_STANDALONE_APPLICATION=1 -DJUCE_USE_CURL=0 \
     -include JuceLibraryCode/JucePluginDefines.h \

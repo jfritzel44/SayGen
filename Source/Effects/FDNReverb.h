@@ -46,8 +46,10 @@ public:
         // live without stepping the delay lengths or the feedback gains.
         smoothing = 1.0f - std::exp (-1.0f / (float) (0.05 * sampleRate));
         setParameters (0.55f, 0.5f, 1.0f, 0.35f);
-        for (int i = 0; i < lines; ++i) { distance[i] = targetDistance[i]; gain[i] = targetGain[i]; }
-        damping = targetDamping; wet = targetWet; dry = targetDry; width = targetWidth;
+        // The first setParameters after prepare is a patch load, not a knob
+        // move, so it lands instantly rather than gliding in from the default.
+        snap();
+        snapNext = true;
         reset();
     }
 
@@ -81,8 +83,17 @@ public:
         // filter has unity DC gain, so RT60 at the bottom end is unaffected.
         targetDamping = onePole (20000.0 * std::pow (0.025, (double) damp));
         targetWidth = std::clamp (widthAmount, 0.0f, 1.0f);
-        targetWet = std::clamp (mix, 0.0f, 1.0f);
-        targetDry = 1.0f - targetWet;
+        // Equal-power crossfade. A linear one dips about 3 dB in the middle,
+        // since the wet and dry signals are uncorrelated and sum in power
+        // rather than amplitude, so sweeping the control ducks the whole part.
+        // The dry side reaches exactly 1 at mix 0 and the wet side exactly 1 at
+        // mix 1: the Freeverb this replaced scaled dry by 2 and wet by 3
+        // internally, so merely switching it on with the mix down lifted the
+        // entire output by 6 dB.
+        const float angle = std::clamp (mix, 0.0f, 1.0f) * (float) pi * 0.5f;
+        targetWet = std::sin (angle);
+        targetDry = std::cos (angle);
+        if (snapNext) { snapNext = false; snap(); }
     }
 
     // right may be null for a mono bus, in which case only left is written.
@@ -143,8 +154,15 @@ public:
 
 private:
     static constexpr double pi = 3.14159265358979323846;
-    // 1/sqrt(8) in, and enough out to land the wet level near the dry one.
-    static constexpr float injection = 0.35355339f, outputTrim = 0.35f;
+    // 1/sqrt(8) in, and enough out to put a fully wet mid-size setting level
+    // with the dry signal it replaced.
+    static constexpr float injection = 0.35355339f, outputTrim = 0.7f;
+
+    void snap()
+    {
+        for (int i = 0; i < lines; ++i) { distance[i] = targetDistance[i]; gain[i] = targetGain[i]; }
+        damping = targetDamping; wet = targetWet; dry = targetDry; width = targetWidth;
+    }
 
     float onePole (double hz) const
     {
@@ -189,5 +207,6 @@ private:
     float damping = 0.5f, targetDamping = 0.5f;
     float wet = 0.0f, targetWet = 0.0f, dry = 1.0f, targetDry = 1.0f;
     float width = 1.0f, targetWidth = 1.0f;
+    bool snapNext = true;
 };
 }

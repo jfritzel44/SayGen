@@ -36,6 +36,9 @@ public:
         damping = targetDamping = onePole (5000.0);
         feedback = targetFeedback = 0.0f;
         mix = targetMix = 0.0f;
+        // The first setParameters after prepare is a patch load, not a knob
+        // move, so it lands instantly rather than gliding in from the default.
+        snapNext = true;
         reset();
     }
 
@@ -53,6 +56,14 @@ public:
         // corner down to 400 Hz, so each pass is audibly darker than the last.
         targetDamping = onePole (20000.0 * std::pow (0.02, (double) std::clamp (damp, 0.0f, 1.0f)));
         targetMix = std::clamp (mixAmount, 0.0f, 1.0f);
+        if (snapNext)
+        {
+            snapNext = false;
+            distance = targetDistance;
+            damping = targetDamping;
+            feedback = targetFeedback;
+            mix = targetMix;
+        }
     }
 
     void process (float* const* channelData, int numChannels, int numSamples)
@@ -60,7 +71,14 @@ public:
         const int count = std::min (numChannels, (int) line.size());
         for (int n = 0; n < numSamples; ++n)
         {
-            distance += timeSmoothing * (targetDistance - distance);
+            // Glide, but at a bounded speed. A plain one-pole moves the read
+            // head by (change / time constant) samples per sample, so a jump
+            // across the whole range starts out reading at eleven times speed
+            // and shrieks. Capping the head's velocity leaves ordinary knob
+            // moves untouched - they never reach the cap - and turns a big
+            // jump into a controlled tape sweep of about a fifth up or down.
+            const double step = timeSmoothing * (targetDistance - distance);
+            distance += std::clamp (step, -maximumSlew, maximumSlew);
             damping += gainSmoothing * (targetDamping - damping);
             feedback += gainSmoothing * (targetFeedback - feedback);
             mix += gainSmoothing * (targetMix - mix);
@@ -80,6 +98,7 @@ public:
 private:
     static constexpr double pi = 3.14159265358979323846;
     static constexpr double maximumSeconds = 2.0;
+    static constexpr double maximumSlew = 0.5;
 
     // Odd, unit slope at zero, saturating to exactly +/-1 by |x| >= 3, so
     // quiet repeats are untouched and a runaway feedback setting still lands
@@ -104,5 +123,6 @@ private:
     float damping = 0.5f, targetDamping = 0.5f;
     float feedback = 0.0f, targetFeedback = 0.0f;
     float mix = 0.0f, targetMix = 0.0f;
+    bool snapNext = true;
 };
 }
