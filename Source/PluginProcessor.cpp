@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "Presets.h"
+#include <algorithm>
 
 //==============================================================================
 // Bipolar [-1, 1] LFO shapes, sampled at a normalised phase in [0, 1).
@@ -45,9 +46,60 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
         "detune", "Oscillator 2 Detune",
         juce::NormalisableRange<float> (-50.0f, 50.0f, 0.1f), 7.0f));
 
+    // Stacks this many detuned copies of each oscillator (fixed spread, see
+    // MySynthAudioProcessor::unisonDetuneCents) for a wider, chorused tone;
+    // 1 = off, matching the original single-oscillator behaviour exactly
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "unisonVoices", "Unison",
+        juce::NormalisableRange<float> (1.0f, (float) MySynthVoice::kMaxUnisonVoices, 1.0f), 1.0f));
+
+    // "Modern" oscillator: continuous saw/pulse/triangle mix + sub-octave,
+    // independent per oscillator, in place of oscType/osc2Type's single-
+    // waveform pick when its "on" toggle is enabled. Lives in its own
+    // overlay panel rather than the (already full) main oscillator row.
+    auto addModernOscParams = [&layout] (const juce::String& prefix, const juce::String& label)
+    {
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            prefix + "ModernOn", label + " Modern", false));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            prefix + "SawMix", label + " Modern Saw",
+            juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 1.0f));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            prefix + "PulseMix", label + " Modern Pulse",
+            juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            prefix + "TriMix", label + " Modern Triangle",
+            juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            prefix + "PulseWidth", label + " Modern Width",
+            juce::NormalisableRange<float> (0.02f, 0.98f, 0.01f), 0.5f));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            prefix + "SubOctave", label + " Modern Sub", false));
+    };
+    addModernOscParams ("osc1", "Oscillator 1");
+    addModernOscParams ("osc2", "Oscillator 2");
+
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         "pitch", "Pitch",
         juce::NormalisableRange<float> (-24.0f, 24.0f, 1.0f), 0.0f));
+
+    // Analog-style pitch instability (see MySynthVoice::renderNextBlock):
+    // 0 = perfectly stable, 1 = full drift (the default every existing
+    // preset was authored against)
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "driftAmount", "Drift",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 1.0f));
+
+    // Glide (portamento): forces single-note mono voicing (see
+    // MySynthAudioProcessor::applyGlideVoicing) and slides the pitch of a
+    // legato note into the next rather than retriggering, the way a classic
+    // analog mono-bass patch plays
+    layout.add (std::make_unique<juce::AudioParameterBool> (
+        "glideOn", "Glide", false));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "glideTime", "Glide Time",
+        juce::NormalisableRange<float> (0.001f, 1.5f, 0.001f, 0.4f), 0.08f));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         "attack", "Attack",
@@ -104,6 +156,32 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         "fltRelease", "Filter Release",
         juce::NormalisableRange<float> (0.001f, 3.0f, 0.001f, 0.4f), 0.1f));
+
+    // Ladder output taps. The filter core is unchanged; these mix its five
+    // taps into the classic responses (see syngen::FeedbackLadder::response).
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        "filterMode", "Filter Mode",
+        juce::StringArray { "LP 24", "LP 12", "BP 24", "BP 12", "HP 24", "HP 12", "Notch" }, 0));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "pwmDepth", "PWM Depth",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "pwmRate", "PWM Rate",
+        juce::NormalisableRange<float> (0.02f, 10.0f, 0.01f, 0.35f), 0.6f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "noiseLevel", "Noise Level",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "noiseColour", "Noise Colour",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 1.0f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "ringMod", "Ring Mod",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.0f));
 
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         "lfoSource", "LFO Source",
@@ -209,6 +287,28 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
         juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.35f));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (
+        "delayOn", "Delay On", false));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "delayTime", "Delay Time",
+        juce::NormalisableRange<float> (0.02f, 1.5f, 0.001f, 0.4f), 0.3f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "delayFeedback", "Delay Feedback",
+        juce::NormalisableRange<float> (0.0f, 0.9f, 0.01f), 0.35f));
+
+    // How much each repeat darkens relative to the one before it (a one-pole
+    // lowpass inside the feedback loop) - 0 keeps every repeat as bright as
+    // the input, dialing up gives the fading, tape-echo-style character
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "delayDamp", "Delay Damp",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.3f));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "delayMix", "Delay Mix",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f), 0.3f));
+
+    layout.add (std::make_unique<juce::AudioParameterBool> (
         "compOn", "Compressor On", false));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -253,6 +353,38 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
         "velocityCurve", "Velocity Curve",
         juce::NormalisableRange<float> (-1.0f, 1.0f, 0.01f), 0.0f));
 
+    // Appended to preserve existing host parameter indices.
+    for (auto id : { "osc1Level", "osc2Level" })
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            id, juce::String (id) == "osc1Level" ? "Oscillator 1 Level" : "Oscillator 2 Level",
+            juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.75f));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "filterCompensation", "Filter Bass Compensation",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "envelopeCurve", "Envelope Curve",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.65f));
+    for (auto prefix : { juce::String ("osc1"), juce::String ("osc2") })
+    {
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            prefix + "PhaseMode", prefix + " Phase Mode",
+            juce::StringArray { "Retrigger", "Random", "Free" }, 0));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            prefix + "StartPhase", prefix + " Start Phase",
+            juce::NormalisableRange<float> (0.0f, 360.0f, 0.1f), prefix == "osc1" ? 0.0f : 90.0f));
+    }
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "phaseRandomness", "Phase Randomness",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 1.0f));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "unisonSpread", "Unison Detune",
+        juce::NormalisableRange<float> (0.0f, 50.0f, 0.1f), 14.0f));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "unisonWidth", "Unison Width",
+        juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.9f));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "osc2Coarse", "Oscillator 2 Coarse Tune",
+        juce::NormalisableRange<float> (-24.0f, 24.0f, 1.0f), 0.0f));
     return layout;
 }
 
@@ -317,16 +449,84 @@ int MySynthAudioProcessor::getNumPrograms()
 
 int MySynthAudioProcessor::getCurrentProgram() { return currentProgram; }
 
+namespace
+{
+const char* const effectParamIDs[] =
+{
+    "gateOn",
+    "gateThresh",
+    "gateRatio",
+    "gateAttack",
+    "gateRelease",
+    "ladderOn",
+    "ladderCutoff",
+    "ladderRes",
+    "ladderDrive",
+    "chorusOn",
+    "chorusRate",
+    "chorusDepth",
+    "chorusMix",
+    "phaserOn",
+    "phaserRate",
+    "phaserDepth",
+    "phaserFeedback",
+    "phaserMix",
+    "reverbOn",
+    "reverbSize",
+    "reverbDamp",
+    "reverbWidth",
+    "reverbMix",
+    "delayOn",
+    "delayTime",
+    "delayFeedback",
+    "delayDamp",
+    "delayMix",
+    "compOn",
+    "compThresh",
+    "compRatio",
+    "compAttack",
+    "compRelease",
+    "limitOn",
+    "limitThresh",
+    "limitRelease",
+};
+}
+
 void MySynthAudioProcessor::setCurrentProgram (int index)
 {
     if (index < 0 || index >= (int) presets.size())
         return;
 
     currentProgram = index;
+    const bool useAdvancedVoicing = apvts.getRawParameterValue ("osc1ModernOn")->load() >= 0.5f
+                                 || apvts.getRawParameterValue ("osc2ModernOn")->load() >= 0.5f;
+
+    // Clear the effects panel, including bypassed controls, before loading
+    // the patch's own effects. Master volume remains a performance control.
+    for (auto id : effectParamIDs)
+        if (auto* param = apvts.getParameter (id))
+            param->setValueNotifyingHost (param->getDefaultValue());
+
+    // Reset optional sound controls so patches cannot inherit another patch's settings.
+    for (auto id : { "osc1Level", "osc2Level", "filterCompensation", "envelopeCurve",
+                     "osc1PhaseMode", "osc2PhaseMode", "osc1StartPhase", "osc2StartPhase",
+                     "phaseRandomness", "unisonSpread", "unisonWidth", "osc2Coarse",
+                     // New sources and the filter mode. Their defaults are all
+                     // neutral - mode LP 24, no PWM, no noise, no ring mod -
+                     // so every preset written before they existed loads
+                     // sounding exactly as it did.
+                     "filterMode", "pwmDepth", "pwmRate", "noiseLevel", "noiseColour", "ringMod" })
+        if (auto* param = apvts.getParameter (id))
+            param->setValueNotifyingHost (param->getDefaultValue());
 
     for (auto& [paramID, value] : presets[(size_t) index].values)
         if (auto* param = apvts.getParameter (paramID))
             param->setValueNotifyingHost (param->convertTo0to1 (value));
+
+    if (useAdvancedVoicing)
+        for (auto& [paramID, value] : presets[(size_t) index].advancedValues)
+            if (auto* param = apvts.getParameter (paramID))
+                param->setValueNotifyingHost (param->convertTo0to1 (value));
 }
 
 const juce::String MySynthAudioProcessor::getProgramName (int index)
@@ -343,16 +543,28 @@ void MySynthAudioProcessor::saveCurrentPatchAsPreset (const juce::String& name)
     // factory presets in Presets.h capture (oscillators, envelopes, filter)
     static const char* patchParamIDs[] =
     {
-        "oscType", "osc2Type", "osc1Octave", "osc2Octave", "detune", "pitch",
+        "oscType", "osc2Type", "osc1Octave", "osc2Octave", "detune", "unisonVoices", "pitch", "driftAmount",
+        "osc1ModernOn", "osc1SawMix", "osc1PulseMix", "osc1TriMix", "osc1PulseWidth", "osc1SubOctave",
+        "osc2ModernOn", "osc2SawMix", "osc2PulseMix", "osc2TriMix", "osc2PulseWidth", "osc2SubOctave",
         "attack", "decay", "sustain", "release",
-        "cutoff", "resonance", "envAmount",
+        "cutoff", "resonance", "envAmount", "filterMode",
+        "pwmDepth", "pwmRate", "noiseLevel", "noiseColour", "ringMod",
         "fltAttack", "fltDecay", "fltSustain", "fltRelease",
+        "glideOn", "glideTime", "overload", "kbAmount",
+        "osc1Level", "osc2Level", "filterCompensation", "envelopeCurve",
+        "osc1PhaseMode", "osc2PhaseMode", "osc1StartPhase", "osc2StartPhase",
+        "phaseRandomness", "unisonSpread", "unisonWidth", "osc2Coarse",
     };
 
     Preset preset;
-    preset.name = name;
+    preset.name     = name;
+    preset.category = "User";
 
     for (auto* paramID : patchParamIDs)
+        if (auto* param = apvts.getParameter (paramID))
+            preset.values.push_back ({ paramID, param->convertFrom0to1 (param->getValue()) });
+
+    for (auto* paramID : effectParamIDs)
         if (auto* param = apvts.getParameter (paramID))
             preset.values.push_back ({ paramID, param->convertFrom0to1 (param->getValue()) });
 
@@ -372,16 +584,56 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     lfoHeldRandom = 0.0f;
     lastAmpGain = 1.0f;
 
+    monoVoice = nullptr;
+    monoNoteStack.clear();
+    previousGlideOn = false;
     synth.clearVoices();
-    for (int i = 0; i < 8; ++i)
+    // Eight voices runs out on sustained chords and pedalled passages, where
+    // the stealing is what gets heard rather than the notes. Voices cost
+    // nothing until they sound, and reassignment is now continuous
+    // (see MySynthVoice::stopNote), so the ceiling can be raised safely.
+    for (int i = 0; i < 16; ++i)
     {
         auto* voice = new MySynthVoice();
+        voice->osc1PhaseMode = &osc1PhaseMode;
+        voice->osc2PhaseMode = &osc2PhaseMode;
+        voice->osc1StartPhase = &osc1StartPhase;
+        voice->osc2StartPhase = &osc2StartPhase;
+        voice->phaseRandomness = &phaseRandomness;
+        voice->unisonWidth = &unisonWidth;
+        voice->osc2Coarse = &osc2Coarse;
+        voice->osc1Level = &osc1Level;
+        voice->osc2Level = &osc2Level;
+        voice->filterCompensation = &filterCompensation;
+        voice->filterMode     = &filterMode;
+        voice->pwmDepth       = &pwmDepth;
+        voice->pwmRate        = &pwmRate;
+        voice->noiseLevel     = &noiseLevel;
+        voice->noiseColour    = &noiseColour;
+        voice->ringModLevel   = &ringModLevel;
+        voice->envelopeCurve = &envelopeCurve;
         voice->oscType        = &oscType;
         voice->osc2Type       = &osc2Type;
         voice->osc1Octave     = &osc1Octave;
         voice->osc2Octave     = &osc2Octave;
         voice->oscSync        = &oscSync;
         voice->detuneCents    = &detuneCents;
+        voice->osc1UnisonVoices = &unisonVoices;
+        voice->osc2UnisonVoices = &unisonVoices;
+        voice->osc1UnisonDetune = &unisonDetuneCents;
+        voice->osc2UnisonDetune = &unisonDetuneCents;
+        voice->osc1ModernOn    = &osc1ModernOn;
+        voice->osc1SawMix      = &osc1SawMix;
+        voice->osc1PulseMix    = &osc1PulseMix;
+        voice->osc1TriMix      = &osc1TriMix;
+        voice->osc1PulseWidth  = &osc1PulseWidth;
+        voice->osc1SubOctave   = &osc1SubOctave;
+        voice->osc2ModernOn    = &osc2ModernOn;
+        voice->osc2SawMix      = &osc2SawMix;
+        voice->osc2PulseMix    = &osc2PulseMix;
+        voice->osc2TriMix      = &osc2TriMix;
+        voice->osc2PulseWidth  = &osc2PulseWidth;
+        voice->osc2SubOctave   = &osc2SubOctave;
         voice->pitchSemitones = &pitchSemitones;
         voice->attackSeconds  = &attackSeconds;
         voice->decaySeconds   = &decaySeconds;
@@ -398,6 +650,7 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
         voice->kbTrackAmount  = &kbTrackAmount;
         voice->velocityCurve  = &velocityCurveAmount;
         voice->pitchBend      = &pitchBendSemitones;
+        voice->driftAmount    = &driftAmount;
         synth.addVoice (voice);
     }
 
@@ -405,23 +658,41 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     synth.addSound (new MySynthSound());
 
     synth.setCurrentPlaybackSampleRate (sampleRate);
+    synth.setMinimumRenderingSubdivisionSize (1, true);
+    enhancedMidi.ensureSize (2048);
 
     juce::dsp::ProcessSpec spec { sampleRate, (juce::uint32) samplesPerBlock,
                                   (juce::uint32) juce::jmax (1, getTotalNumOutputChannels()) };
     gate.prepare (spec);
     gate.reset();
-    ladder.prepare (spec);
+    // The ladder itself is prepared for the oversampled rate it will actually
+    // run at, so its cutoff coefficients stay correct.
+    ladderOversampling = std::make_unique<juce::dsp::Oversampling<float>> (
+        spec.numChannels, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
+    ladderOversampling->initProcessing ((size_t) juce::jmax (1, samplesPerBlock));
+    ladderOversampling->reset();
+    juce::dsp::ProcessSpec ladderSpec { spec.sampleRate * 2.0, spec.maximumBlockSize * 2, spec.numChannels };
+    ladder.prepare (ladderSpec);
     ladder.setMode (juce::dsp::LadderFilterMode::LPF24);
     ladder.reset();
     chorus.prepare (spec);
-    chorus.setCentreDelay (7.0f);
+    // 7ms sits in flanger territory - the dry/wet copies are close enough
+    // together that they comb-filter into sparse, widely-spaced notches,
+    // which reads as a metallic/thin swirl rather than a chorus thickening.
+    // Real analog chorus (Juno, CE-1) centres around 20-30ms; that longer
+    // delay packs the comb notches close enough together to sound like
+    // smooth thickening instead of an audible sweep.
+    chorus.setCentreDelay (22.0f);
     chorus.setFeedback (0.0f);
     chorus.reset();
     phaser.prepare (spec);
     phaser.setCentreFrequency (1300.0f);
     phaser.reset();
-    reverb.prepare (spec);
-    reverb.reset();
+    reverb.prepare (sampleRate);
+    echo.prepare (sampleRate, (int) spec.numChannels);
+    masterGain.reset (sampleRate, 0.02);
+    masterGain.setCurrentAndTargetValue (
+        juce::Decibels::decibelsToGain (apvts.getRawParameterValue ("masterVolume")->load(), -60.0f));
     comp.prepare (spec);
     comp.reset();
     limiter.prepare (spec);
@@ -449,11 +720,115 @@ bool MySynthAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) 
 }
 #endif
 
+void MySynthAudioProcessor::applyGlideVoicing (juce::MidiBuffer& midiMessages)
+{
+    const bool enabled = glideOn.load();
+    if (enabled != previousGlideOn)
+    {
+        // A legato voice's JUCE note identity is its original note, not its
+        // current pitch. Release it before returning to ordinary note-offs.
+        // Also release polyphonic notes when entering mono mode.
+        synth.allNotesOff (0, true);
+        monoVoice = nullptr;
+        monoNoteStack.clear();
+        previousGlideOn = enabled;
+    }
+    if (! enabled)
+        return;
+
+    const float glideSecs = glideTimeSeconds.load();
+    juce::MidiBuffer passThrough;
+    for (const auto metadata : midiMessages)
+    {
+        const auto message = metadata.getMessage();
+        if (message.isNoteOn())
+        {
+            const HeldNote held { message.getNoteNumber(), message.getFloatVelocity(), message.getChannel() };
+            monoNoteStack.erase (std::remove_if (monoNoteStack.begin(), monoNoteStack.end(),
+                [&] (const HeldNote& n) { return n.note == held.note && n.channel == held.channel; }),
+                monoNoteStack.end());
+            monoNoteStack.push_back (held);
+
+            if (monoVoice != nullptr && monoVoice->isVoiceActive())
+                monoVoice->setGlideTarget (held.note, held.velocity, glideSecs);
+            else
+            {
+                // Events are already bounded to the current render position.
+                // Start immediately so simultaneous note-ons also see this
+                // voice, instead of allocating one voice per queued event.
+                synth.noteOn (held.channel, held.note, held.velocity);
+                monoVoice = nullptr;
+                for (int i = 0; i < synth.getNumVoices(); ++i)
+                    if (auto* voice = dynamic_cast<MySynthVoice*> (synth.getVoice (i)))
+                        if (voice->isVoiceActive() && voice->isKeyDown()
+                            && voice->getCurrentlyPlayingNote() == held.note
+                            && voice->isPlayingChannel (held.channel))
+                            monoVoice = voice;
+            }
+        }
+        else if (message.isNoteOff())
+        {
+            const auto matches = [&] (const HeldNote& n)
+            { return n.note == message.getNoteNumber() && n.channel == message.getChannel(); };
+            if (std::none_of (monoNoteStack.begin(), monoNoteStack.end(), matches))
+                continue;
+            const bool releasedTop = matches (monoNoteStack.back());
+            monoNoteStack.erase (std::remove_if (monoNoteStack.begin(), monoNoteStack.end(), matches),
+                                 monoNoteStack.end());
+            if (monoNoteStack.empty())
+            {
+                if (monoVoice != nullptr)
+                {
+                    monoVoice->setKeyDown (false);
+                    monoVoice->stopNote (message.getFloatVelocity(), true);
+                }
+                monoVoice = nullptr;
+            }
+            else if (releasedTop && monoVoice != nullptr)
+            {
+                const auto& top = monoNoteStack.back();
+                monoVoice->setGlideTarget (top.note, top.velocity, glideSecs);
+            }
+        }
+        else if (message.isAllNotesOff() || message.isAllSoundOff())
+        {
+            synth.allNotesOff (0, ! message.isAllSoundOff());
+            monoNoteStack.clear();
+            monoVoice = nullptr;
+        }
+        else
+        {
+            passThrough.addEvent (message, metadata.samplePosition);
+        }
+    }
+
+    midiMessages.swapWith (passThrough);
+}
+
 void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                            juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
+
+    osc1PhaseMode.store ((int) apvts.getRawParameterValue ("osc1PhaseMode")->load());
+    osc2PhaseMode.store ((int) apvts.getRawParameterValue ("osc2PhaseMode")->load());
+    osc1StartPhase.store (apvts.getRawParameterValue ("osc1StartPhase")->load());
+    osc2StartPhase.store (apvts.getRawParameterValue ("osc2StartPhase")->load());
+    phaseRandomness.store (apvts.getRawParameterValue ("phaseRandomness")->load());
+    unisonDetuneCents.store (apvts.getRawParameterValue ("unisonSpread")->load());
+    unisonWidth.store (apvts.getRawParameterValue ("unisonWidth")->load());
+    osc2Coarse.store (apvts.getRawParameterValue ("osc2Coarse")->load());
+    osc1Level.store (apvts.getRawParameterValue ("osc1Level")->load());
+    osc2Level.store (apvts.getRawParameterValue ("osc2Level")->load());
+    filterCompensation.store (apvts.getRawParameterValue ("filterCompensation")->load());
+    filterMode.store ((int) std::round (apvts.getRawParameterValue ("filterMode")->load()));
+    pwmDepth.store (apvts.getRawParameterValue ("pwmDepth")->load());
+    pwmRate.store (apvts.getRawParameterValue ("pwmRate")->load());
+    noiseLevel.store (apvts.getRawParameterValue ("noiseLevel")->load());
+    noiseColour.store (apvts.getRawParameterValue ("noiseColour")->load());
+    ringModLevel.store (apvts.getRawParameterValue ("ringMod")->load());
+    envelopeCurve.store (apvts.getRawParameterValue ("envelopeCurve")->load());
 
     // Sync parameters to atomics read by voices
     oscType.store ((int)std::round (apvts.getRawParameterValue ("oscType")->load()));
@@ -462,6 +837,21 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     osc2Octave.store ((int)std::round (apvts.getRawParameterValue ("osc2Octave")->load()));
     oscSync.store (apvts.getRawParameterValue ("oscSync")->load() >= 0.5f);
     detuneCents.store (apvts.getRawParameterValue ("detune")->load());
+    driftAmount.store (apvts.getRawParameterValue ("driftAmount")->load());
+    unisonVoices.store ((int) std::round (apvts.getRawParameterValue ("unisonVoices")->load()));
+
+    osc1ModernOn.store   (apvts.getRawParameterValue ("osc1ModernOn")->load() >= 0.5f);
+    osc1SawMix.store     (apvts.getRawParameterValue ("osc1SawMix")->load());
+    osc1PulseMix.store   (apvts.getRawParameterValue ("osc1PulseMix")->load());
+    osc1TriMix.store     (apvts.getRawParameterValue ("osc1TriMix")->load());
+    osc1PulseWidth.store (apvts.getRawParameterValue ("osc1PulseWidth")->load());
+    osc1SubOctave.store  (apvts.getRawParameterValue ("osc1SubOctave")->load() >= 0.5f);
+    osc2ModernOn.store   (apvts.getRawParameterValue ("osc2ModernOn")->load() >= 0.5f);
+    osc2SawMix.store     (apvts.getRawParameterValue ("osc2SawMix")->load());
+    osc2PulseMix.store   (apvts.getRawParameterValue ("osc2PulseMix")->load());
+    osc2TriMix.store     (apvts.getRawParameterValue ("osc2TriMix")->load());
+    osc2PulseWidth.store (apvts.getRawParameterValue ("osc2PulseWidth")->load());
+    osc2SubOctave.store  (apvts.getRawParameterValue ("osc2SubOctave")->load() >= 0.5f);
     attackSeconds.store (apvts.getRawParameterValue ("attack")->load());
     decaySeconds.store (apvts.getRawParameterValue ("decay")->load());
     sustainLevel.store (apvts.getRawParameterValue ("sustain")->load());
@@ -475,6 +865,8 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     fltRelease.store (apvts.getRawParameterValue ("fltRelease")->load());
     overloadAmount.store (apvts.getRawParameterValue ("overload")->load());
     velocityCurveAmount.store (apvts.getRawParameterValue ("velocityCurve")->load());
+    glideOn.store (apvts.getRawParameterValue ("glideOn")->load() >= 0.5f);
+    glideTimeSeconds.store (apvts.getRawParameterValue ("glideTime")->load());
 
     // Base pitch/cutoff, before mod LFO is added in below. Read once here so
     // each sub-block's LFO contribution is applied fresh rather than
@@ -497,19 +889,11 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if (!midiMessages.isEmpty())
         midiActivity = true;
 
-    // Pitch bend: read into a shared atomic rather than each voice's own
-    // SynthesiserVoice::pitchWheelMoved(), since that callback only reaches
-    // voices actively sounding on the channel at the moment the wheel moves.
-    // A voice that starts a later note while the wheel is already held bent
-    // would otherwise miss it and start unbent.
-    for (const auto metadata : midiMessages)
-    {
-        auto message = metadata.getMessage();
-        if (message.isPitchWheel())
-            pitchBendSemitones.store (
-                (float) (message.getPitchWheelValue() - 8192) / 8192.0f * pitchBendRangeSemitones);
-    }
-
+    // Collapse to single-note mono voicing with portamento when Glide is on
+    // (see applyGlideVoicing / the HeldNote stack for how); a no-op pass-
+    // through otherwise
+    // Event-bounded rendering keeps note, glide, bend and wheel changes at
+    // their requested sample positions. Never hand future events to JUCE.
     // Render in small sub-blocks instead of the whole buffer at once, so
     // pitch/cutoff/amp modulation gets updated far more often than the
     // host's block size. A once-per-block update makes the LFO audibly
@@ -517,14 +901,38 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // across each sub-block) is what makes it read as continuous motion
     // instead, closer to how an analog LFO like the Little Phatty's behaves.
     constexpr int modUpdateSamples = 32;
+    auto event = midiMessages.cbegin();
     int startSample = 0;
     while (startSample < buffer.getNumSamples())
     {
-        const int chunkSize = juce::jmin (modUpdateSamples, buffer.getNumSamples() - startSample);
+        int chunkSize = juce::jmin (modUpdateSamples, buffer.getNumSamples() - startSample);
+        {
+            enhancedMidi.clear();
+            while (event != midiMessages.cend() && (*event).samplePosition <= startSample)
+            {
+                const auto message = (*event).getMessage();
+                enhancedMidi.addEvent (message, startSample);
+                if (message.isPitchWheel())
+                    pitchBendSemitones.store ((float) (message.getPitchWheelValue() - 8192)
+                                             / 8192.0f * pitchBendRangeSemitones);
+                else if (message.isController() && message.getControllerNumber() == 1)
+                    modWheelAmount.store ((float) message.getControllerValue() / 127.0f);
+                ++event;
+            }
+            if (event != midiMessages.cend())
+                chunkSize = juce::jmin (chunkSize, (*event).samplePosition - startSample);
+            applyGlideVoicing (enhancedMidi);
+        }
 
         float lfoValue = 0.0f;
         if (lfoDest != 0)
             lfoValue = lfoSource == 4 ? lfoHeldRandom : lfoWaveSample (lfoSource, lfoPhase);
+
+        // The mod wheel scales the LFO's depth for every destination, not just
+        // pitch: the knob sets how far the wheel can take it, and the wheel
+        // decides how much of that is in play. A patch with modulation dialed
+        // in therefore sits still until the player brings the wheel up.
+        const float lfoDepth = lfoAmount * modWheelAmount.load();
 
         lfoPhase += lfoRateHz * chunkSize / getSampleRate();
         if (lfoPhase >= 1.0)
@@ -533,17 +941,17 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             lfoHeldRandom = juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f;
         }
 
-        if (lfoDest == 1)        // Pitch: +/- one octave at full amount
-            pitchSemitones.store (basePitchSemitones + lfoValue * lfoAmount * 12.0f);
-        else if (lfoDest == 2)   // Filter Cutoff: +/- 4 octaves at full amount
+        if (lfoDest == 1)        // Pitch: +/- one octave at full depth
+            pitchSemitones.store (basePitchSemitones + lfoValue * lfoDepth * 12.0f);
+        else if (lfoDest == 2)   // Filter Cutoff: +/- 4 octaves at full depth
             cutoffHz.store (juce::jlimit (20.0f, 20000.0f,
-                baseCutoffHz * std::pow (2.0f, lfoValue * lfoAmount * 4.0f)));
+                baseCutoffHz * std::pow (2.0f, lfoValue * lfoDepth * 4.0f)));
 
-        synth.renderNextBlock (buffer, midiMessages, startSample, chunkSize);
+        synth.renderNextBlock (buffer, enhancedMidi, startSample, chunkSize);
 
         if (lfoDest == 3)        // Amp: tremolo, ramped across the sub-block
         {
-            const float gain = 1.0f - lfoAmount * 0.5f * (1.0f - lfoValue);
+            const float gain = 1.0f - lfoDepth * 0.5f * (1.0f - lfoValue);
             buffer.applyGainRamp (startSample, chunkSize, lastAmpGain, gain);
             lastAmpGain = gain;
         }
@@ -562,12 +970,19 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         gate.process (juce::dsp::ProcessContextReplacing<float> (block));
     }
 
-    if (apvts.getRawParameterValue ("ladderOn")->load() >= 0.5f)
+    if (apvts.getRawParameterValue ("ladderOn")->load() >= 0.5f && ladderOversampling != nullptr)
     {
         ladder.setCutoffFrequencyHz (apvts.getRawParameterValue ("ladderCutoff")->load());
         ladder.setResonance         (apvts.getRawParameterValue ("ladderRes")->load());
         ladder.setDrive             (apvts.getRawParameterValue ("ladderDrive")->load());
-        ladder.process (juce::dsp::ProcessContextReplacing<float> (block));
+        // Up, filter, down. The ladder's drive is a saturator, so at the host
+        // rate its own harmonics fold back down as aliasing; at 10x drive that
+        // is the most audible distortion left in the chain. The polyphase IIR
+        // halfband costs about three samples of delay, which is why it is only
+        // in circuit while this effect is on.
+        auto oversampled = ladderOversampling->processSamplesUp (block);
+        ladder.process (juce::dsp::ProcessContextReplacing<float> (oversampled));
+        ladderOversampling->processSamplesDown (block);
     }
 
     if (apvts.getRawParameterValue ("chorusOn")->load() >= 0.5f)
@@ -589,15 +1004,28 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     if (apvts.getRawParameterValue ("reverbOn")->load() >= 0.5f)
     {
-        const auto mix = apvts.getRawParameterValue ("reverbMix")->load();
-        juce::Reverb::Parameters params;
-        params.roomSize = apvts.getRawParameterValue ("reverbSize")->load();
-        params.damping  = apvts.getRawParameterValue ("reverbDamp")->load();
-        params.width    = apvts.getRawParameterValue ("reverbWidth")->load();
-        params.wetLevel = mix;
-        params.dryLevel = 1.0f - mix;
-        reverb.setParameters (params);
-        reverb.process (juce::dsp::ProcessContextReplacing<float> (block));
+        reverb.setParameters (apvts.getRawParameterValue ("reverbSize")->load(),
+                              apvts.getRawParameterValue ("reverbDamp")->load(),
+                              apvts.getRawParameterValue ("reverbWidth")->load(),
+                              apvts.getRawParameterValue ("reverbMix")->load());
+        reverb.process (buffer.getWritePointer (0),
+                        buffer.getNumChannels() > 1 ? buffer.getWritePointer (1) : nullptr,
+                        buffer.getNumSamples());
+        // Any bus wider than stereo gets the stereo result folded down, the
+        // same convention the voice renderer uses for its extra channels.
+        for (int ch = 2; ch < buffer.getNumChannels(); ++ch)
+            juce::FloatVectorOperations::copy (buffer.getWritePointer (ch),
+                                               buffer.getReadPointer (0), buffer.getNumSamples());
+    }
+
+    if (apvts.getRawParameterValue ("delayOn")->load() >= 0.5f)
+    {
+        echo.setParameters (apvts.getRawParameterValue ("delayTime")->load(),
+                            apvts.getRawParameterValue ("delayFeedback")->load(),
+                            apvts.getRawParameterValue ("delayDamp")->load(),
+                            apvts.getRawParameterValue ("delayMix")->load());
+        echo.process (buffer.getArrayOfWritePointers(), buffer.getNumChannels(),
+                      buffer.getNumSamples());
     }
 
     if (apvts.getRawParameterValue ("compOn")->load() >= 0.5f)
@@ -618,8 +1046,13 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     // Final output gain stage: independent of the amp envelope, applied
     // after every effect so it's the true last thing to touch the signal
+    // Ramped across the block: a once-per-block jump in gain is a step in the
+    // waveform, which is what makes a swept volume knob buzz.
     const float masterVolumeDb = apvts.getRawParameterValue ("masterVolume")->load();
-    buffer.applyGain (juce::Decibels::decibelsToGain (masterVolumeDb, -60.0f));
+    masterGain.setTargetValue (juce::Decibels::decibelsToGain (masterVolumeDb, -60.0f));
+    const float gainFrom = masterGain.getCurrentValue();
+    masterGain.skip (buffer.getNumSamples());
+    buffer.applyGainRamp (0, buffer.getNumSamples(), gainFrom, masterGain.getCurrentValue());
 
     oscilloscope.pushBuffer (buffer);
     outputMeter.pushBuffer (buffer);
@@ -647,6 +1080,7 @@ void MySynthAudioProcessor::setStateInformation (const void* data, int sizeInByt
     if (xml && xml->hasTagName (apvts.state.getType()))
     {
         auto newState = juce::ValueTree::fromXml (*xml);
+        newState.removeChild (newState.getChildWithProperty ("id", "enhancedEngine"), nullptr);
 
         // State saved by an older version may lack newer parameters; fill
         // those in with their defaults so they don't restore as garbage

@@ -9,7 +9,7 @@
 // all of them at once instead of editing each component separately.
 namespace KnobLabelStyle
 {
-    constexpr float fontSize = 13.0f;
+    constexpr float fontSize = 14.0f;
 
     inline juce::Typeface::Ptr typeface()
     {

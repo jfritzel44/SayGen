@@ -11,6 +11,7 @@
 #include "SyncToggleButton.h"
 #include "Oscilloscope.h"
 #include "VelocityCurveEditor.h"
+#include "ModernOscEditor.h"
 
 // The editor is a thin resizable shell around Content, which draws/lays out
 // at a fixed design resolution. The shell scales Content uniformly to fill
@@ -57,6 +58,12 @@ private:
         // different waveform.
         double osc2ValueOnMouseDown = 0.0;
 
+        // Tracks whether Osc 1/2's main-screen waveform knob was last shown
+        // in Wave Mix mode, so status text updates only when the flag flips.
+        bool osc1ShowingAdvanced = false;
+        bool osc2ShowingAdvanced = false;
+        void refreshOscTypeKnobs();
+
         // Only the panel section titles (Oscillators, Filter, Amp, etc) use
         // this; everywhere else keeps the system default font.
         juce::Typeface::Ptr sectionTitleTypeface;
@@ -80,8 +87,14 @@ private:
         SyncToggleButton oscSyncButton;
         LabeledKnob detuneKnob;
         LabeledKnob pitchKnob;
+        LabeledKnob unisonKnob;
+        SyncToggleButton glideButton;
+        LabeledKnob glideTimeKnob;
         LabeledKnob overloadKnob;
         LabeledKnob kbAmountKnob;
+        // Ladder output mode, in the Filter panel's header row
+        juce::ComboBox filterModeBox;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> filterModeAttachment;
         LabeledKnob cutoffKnob;
         LabeledKnob resonanceKnob;
         LabeledKnob attackKnob;
@@ -106,6 +119,12 @@ private:
         // toggled in and out of view rather than living in the fixed layout
         juce::TextButton velocityButton { "VELOCITY" };
         VelocityCurveEditor velocityPanel;
+
+        // Modern oscillator mix: same overlay pattern as velocity, for the
+        // saw/pulse/triangle/width/sub controls that don't fit in the main
+        // oscillator row
+        juce::TextButton modernOscButton { "ADV OSC" };
+        ModernOscEditor modernOscPanel;
 
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Content)
     };

@@ -3,7 +3,8 @@
 <JUCERPROJECT id="Sooq25" name="SynGen1" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" pluginIsSynth="1"
               pluginWantsMidiIn="1" pluginVSTCategory="kPlugCategSynth" pluginVST3Category="Instrument|Synth"
-              pluginAUMainType="'aumu'" pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
+              pluginAUMainType="'aumu'" pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn"
+              pluginName="SynGen">
   <MAINGROUP id="gEyweJ" name="SynGen1">
     <GROUP id="{6F83AA7A-FCF7-FAEA-14F2-D9AE4572D91E}" name="Source">
       <FILE id="jU4puW" name="PluginProcessor.cpp" compile="1" resource="0"
@@ -29,6 +30,8 @@
       <FILE id="osp001" name="Oscilloscope.h" compile="0" resource="0" file="Source/Oscilloscope.h"/>
       <GROUP id="{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}" name="Oscillator">
         <FILE id="osc001" name="Oscillator.h" compile="0" resource="0" file="Source/Oscillator/Oscillator.h"/>
+        <FILE id="edsp01" name="EnhancedDSP.h" compile="0" resource="0" file="Source/Oscillator/EnhancedDSP.h"/>
+        <FILE id="omot01" name="OscillatorMotion.h" compile="0" resource="0" file="Source/Oscillator/OscillatorMotion.h"/>
       </GROUP>
       <GROUP id="{B2C3D4E5-F607-8901-BCDE-F23456789012}" name="assets">
         <FILE id="img001" name="osc.png" compile="0" resource="1" file="Source/assets/osc.png"/>

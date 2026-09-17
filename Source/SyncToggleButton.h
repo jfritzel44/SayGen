@@ -13,7 +13,7 @@ public:
                       const juce::String& parameterID,
                       const juce::String& title)
         : attachment (*apvts.getParameter (parameterID), [this] (float v)
-                      { on = v >= 0.5f; repaint(); }),
+                      { on = v >= 0.5f; repaint(); if (onToggle) onToggle(); }),
           titleText (title)
     {
         onImage  = cropToContent (juce::ImageCache::getFromMemory (BinaryData::toggle_on_png,
@@ -27,6 +27,12 @@ public:
     {
         attachment.setValueAsCompleteGesture (on ? 0.0f : 1.0f);
     }
+
+    bool isOn() const { return on; }
+
+    // Fires after `on` changes, whether from a click here or a host/other-UI
+    // change to the underlying parameter.
+    std::function<void()> onToggle;
 
     void paint (juce::Graphics& g) override
     {
@@ -42,9 +48,14 @@ public:
             // visible button size now, unlike the padded source artwork.
             // 10% larger than the original 24px icon.
             constexpr float iconSize = 24.0f * 1.10f;
-            auto iconArea = getLocalBounds().withTrimmedTop (22);
+            // LabeledKnob's rotary art sits top-aligned under its title
+            // rather than centred in the whole box below it (see
+            // OscKnobLookAndFeel::drawRotarySlider); matching that here
+            // keeps a toggle in the same row lined up with the knobs
+            // beside it instead of sitting visibly lower.
+            const float centreY = 22.0f + juce::jmax (0.0f, (float) getHeight() - 50.0f) * 0.5f;
             auto iconRect = juce::Rectangle<float> (iconSize, iconSize)
-                                .withCentre (iconArea.getCentre().toFloat());
+                                .withCentre ({ getWidth() * 0.5f, centreY });
             g.drawImage (img, iconRect, juce::RectanglePlacement::centred);
         }
     }
