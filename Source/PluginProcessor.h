@@ -139,6 +139,8 @@ private:
     // held, again without retriggering.
     struct HeldNote { int note; float velocity; int channel; };  // velocity normalised [0, 1], matching startNote()'s
     std::vector<HeldNote> monoNoteStack;
+    MySynthVoice* monoVoice = nullptr;
+    bool previousGlideOn = false;
     void applyGlideVoicing (juce::MidiBuffer& midiMessages);
 
     // Single free-running mod LFO, computed once per block and routed to

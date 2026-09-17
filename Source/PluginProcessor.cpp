@@ -584,6 +584,9 @@ void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     lfoHeldRandom = 0.0f;
     lastAmpGain = 1.0f;
 
+    monoVoice = nullptr;
+    monoNoteStack.clear();
+    previousGlideOn = false;
     synth.clearVoices();
     // Eight voices runs out on sustained chords and pedalled passages, where
     // the stealing is what gets heard rather than the notes. Voices cost
@@ -719,109 +722,83 @@ bool MySynthAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) 
 
 void MySynthAudioProcessor::applyGlideVoicing (juce::MidiBuffer& midiMessages)
 {
-    if (! glideOn.load())
+    const bool enabled = glideOn.load();
+    if (enabled != previousGlideOn)
     {
-        // Glide just got switched off (or was never on) - drop any stack
-        // left over from a previous run so a later glide-on doesn't resume
-        // from stale state
-        if (! monoNoteStack.empty())
-            monoNoteStack.clear();
-        return;
+        // A legato voice's JUCE note identity is its original note, not its
+        // current pitch. Release it before returning to ordinary note-offs.
+        // Also release polyphonic notes when entering mono mode.
+        synth.allNotesOff (0, true);
+        monoVoice = nullptr;
+        monoNoteStack.clear();
+        previousGlideOn = enabled;
     }
+    if (! enabled)
+        return;
 
     const float glideSecs = glideTimeSeconds.load();
-
-    // Finds the (normally singular) voice currently sounding, so its pitch/
-    // level can be retargeted directly rather than routed back through
-    // MIDI - direct calls also sidestep Synthesiser's note-number matching,
-    // which would otherwise get confused once a voice's sounding note no
-    // longer matches the note that originally started it.
-    auto forEachActiveVoice = [this] (auto&& fn)
-    {
-        bool foundOne = false;
-        for (int i = 0; i < synth.getNumVoices(); ++i)
-            if (auto* voice = dynamic_cast<MySynthVoice*> (synth.getVoice (i)))
-                if (voice->isVoiceActive())
-                {
-                    fn (*voice);
-                    foundOne = true;
-                }
-        return foundOne;
-    };
-
     juce::MidiBuffer passThrough;
-
     for (const auto metadata : midiMessages)
     {
-        const auto message    = metadata.getMessage();
-        const auto samplePos  = metadata.samplePosition;
-
+        const auto message = metadata.getMessage();
         if (message.isNoteOn())
         {
             const HeldNote held { message.getNoteNumber(), message.getFloatVelocity(), message.getChannel() };
-            const bool wasEmpty = monoNoteStack.empty();
-
-            // A re-press of an already-held note (e.g. a stuck-key repeat)
-            // just moves it back to the top rather than stacking a duplicate
             monoNoteStack.erase (std::remove_if (monoNoteStack.begin(), monoNoteStack.end(),
                 [&] (const HeldNote& n) { return n.note == held.note && n.channel == held.channel; }),
                 monoNoteStack.end());
             monoNoteStack.push_back (held);
 
-            if (wasEmpty)
-            {
-                // Nothing held yet: a normal trigger, full envelope attack
-                passThrough.addEvent (message, samplePos);
-            }
+            if (monoVoice != nullptr && monoVoice->isVoiceActive())
+                monoVoice->setGlideTarget (held.note, held.velocity, glideSecs);
             else
             {
-                // Legato: retarget the sounding voice instead of retriggering.
-                // If nothing is actually active yet (e.g. the note that
-                // started it hasn't been rendered in this block yet), fall
-                // back to a normal trigger so the note is never silently lost.
-                const bool retargeted = forEachActiveVoice ([&] (MySynthVoice& v)
-                {
-                    v.setGlideTarget (held.note, held.velocity, glideSecs);
-                });
-                if (! retargeted)
-                    passThrough.addEvent (message, samplePos);
+                // Events are already bounded to the current render position.
+                // Start immediately so simultaneous note-ons also see this
+                // voice, instead of allocating one voice per queued event.
+                synth.noteOn (held.channel, held.note, held.velocity);
+                monoVoice = nullptr;
+                for (int i = 0; i < synth.getNumVoices(); ++i)
+                    if (auto* voice = dynamic_cast<MySynthVoice*> (synth.getVoice (i)))
+                        if (voice->isVoiceActive() && voice->isKeyDown()
+                            && voice->getCurrentlyPlayingNote() == held.note
+                            && voice->isPlayingChannel (held.channel))
+                            monoVoice = voice;
             }
         }
         else if (message.isNoteOff())
         {
-            const auto note    = message.getNoteNumber();
-            const auto channel = message.getChannel();
-
-            monoNoteStack.erase (std::remove_if (monoNoteStack.begin(), monoNoteStack.end(),
-                [&] (const HeldNote& n) { return n.note == note && n.channel == channel; }),
-                monoNoteStack.end());
-
+            const auto matches = [&] (const HeldNote& n)
+            { return n.note == message.getNoteNumber() && n.channel == message.getChannel(); };
+            if (std::none_of (monoNoteStack.begin(), monoNoteStack.end(), matches))
+                continue;
+            const bool releasedTop = matches (monoNoteStack.back());
+            monoNoteStack.erase (std::remove_if (monoNoteStack.begin(), monoNoteStack.end(), matches),
+                                 monoNoteStack.end());
             if (monoNoteStack.empty())
             {
-                // Last held note released: let the voice actually stop,
-                // called directly (see forEachActiveVoice) rather than
-                // passing the note-off through, since Synthesiser would try
-                // to match it by note number and this voice may well be
-                // sounding a different one after however many glides
-                forEachActiveVoice ([&] (MySynthVoice& v)
+                if (monoVoice != nullptr)
                 {
-                    v.stopNote (message.getVelocity() / 127.0f, true);
-                });
+                    monoVoice->setKeyDown (false);
+                    monoVoice->stopNote (message.getFloatVelocity(), true);
+                }
+                monoVoice = nullptr;
             }
-            else
+            else if (releasedTop && monoVoice != nullptr)
             {
-                // Notes still held: glide back to whichever is now on top,
-                // no retrigger
                 const auto& top = monoNoteStack.back();
-                forEachActiveVoice ([&] (MySynthVoice& v)
-                {
-                    v.setGlideTarget (top.note, top.velocity, glideSecs);
-                });
+                monoVoice->setGlideTarget (top.note, top.velocity, glideSecs);
             }
+        }
+        else if (message.isAllNotesOff() || message.isAllSoundOff())
+        {
+            synth.allNotesOff (0, ! message.isAllSoundOff());
+            monoNoteStack.clear();
+            monoVoice = nullptr;
         }
         else
         {
-            passThrough.addEvent (message, samplePos);
+            passThrough.addEvent (message, metadata.samplePosition);
         }
     }
 

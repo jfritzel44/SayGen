@@ -33,6 +33,7 @@ public:
         label.setText (title, juce::dontSendNotification);
         label.setJustificationType (juce::Justification::centred);
         label.setFont (KnobLabelStyle::font());
+        label.setColour (juce::Label::textColourId, juce::Colour (0xffc3ccca));
         addAndMakeVisible (label);
     }
 
@@ -53,7 +54,7 @@ public:
         else
         {
             label.setText (defaultTitle, juce::dontSendNotification);
-            label.removeColour (juce::Label::textColourId);
+            label.setColour (juce::Label::textColourId, juce::Colour (0xffc3ccca));
         }
     }
 

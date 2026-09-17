@@ -59,8 +59,7 @@ private:
         double osc2ValueOnMouseDown = 0.0;
 
         // Tracks whether Osc 1/2's main-screen waveform knob was last shown
-        // disabled, so refreshOscTypeKnobs() only touches it (and its status
-        // text) when Advanced Oscillator Settings' Modern flag actually flips.
+        // in Wave Mix mode, so status text updates only when the flag flips.
         bool osc1ShowingAdvanced = false;
         bool osc2ShowingAdvanced = false;
         void refreshOscTypeKnobs();

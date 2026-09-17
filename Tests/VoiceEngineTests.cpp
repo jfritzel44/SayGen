@@ -64,25 +64,31 @@ struct VoiceFixture
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI init;
-    if (argc == 2 && juce::String (argv[1]) == "--jump-benchmark")
+    const bool factoryJumpBenchmark = argc == 2 && juce::String (argv[1]) == "--factory-jump-benchmark";
+    if (factoryJumpBenchmark || (argc == 2 && juce::String (argv[1]) == "--jump-benchmark"))
     {
+        for (int noteCount : (factoryJumpBenchmark ? std::vector<int> { 1, 4, 8 } : std::vector<int> { 8 }))
         for (bool advanced : { false, true })
         {
+            if (factoryJumpBenchmark && advanced) continue;
             MySynthAudioProcessor processor;
             auto set = [&] (const char* id, float value)
             {
                 auto* p = processor.apvts.getParameter (id);
                 p->setValueNotifyingHost (p->convertTo0to1 (value));
             };
-            processor.setCurrentProgram (2); // Jump2
-            set ("osc1ModernOn", advanced); set ("osc2ModernOn", advanced);
-            set ("osc1SawMix", 0.28f); set ("osc1PulseMix", 0.22f);
-            set ("osc1TriMix", 0.26f); set ("osc1PulseWidth", 0.98f);
-            set ("osc2SawMix", 1); set ("osc2PulseMix", 0); set ("osc2TriMix", 0);
-            set ("osc2PulseWidth", 0.67f);
-            set ("osc1SubOctave", 1); set ("osc2SubOctave", 1);
-            // Match the screenshot's bypassed effects.
-            set ("reverbOn", 0); set ("limitOn", 0);
+            processor.setCurrentProgram (factoryJumpBenchmark ? 0 : 2);
+            if (! factoryJumpBenchmark)
+            {
+                set ("osc1ModernOn", advanced); set ("osc2ModernOn", advanced);
+                set ("osc1SawMix", 0.28f); set ("osc1PulseMix", 0.22f);
+                set ("osc1TriMix", 0.26f); set ("osc1PulseWidth", 0.98f);
+                set ("osc2SawMix", 1); set ("osc2PulseMix", 0); set ("osc2TriMix", 0);
+                set ("osc2PulseWidth", 0.67f);
+                set ("osc1SubOctave", 1); set ("osc2SubOctave", 1);
+                // Match the screenshot's bypassed effects.
+                set ("reverbOn", 0); set ("limitOn", 0);
+            }
             constexpr int blockSize = 128;
             constexpr double rate = 48000;
             processor.setRateAndBufferSizeDetails (rate, blockSize);
@@ -96,7 +102,7 @@ int main (int argc, char** argv)
                 juce::MidiBuffer midi;
                 if (block % 75 == 0)
                 {
-                    for (int note = 60; note < 68; ++note)
+                    for (int note = 60; note < 60 + noteCount; ++note)
                     {
                         midi.addEvent (juce::MidiMessage::noteOff (1, note), 0);
                         midi.addEvent (juce::MidiMessage::noteOn (1, note, 0.8f), 0);
@@ -112,17 +118,104 @@ int main (int argc, char** argv)
                     for (int n = 0; n < blockSize; ++n)
                     {
                         const float sample = audio.getSample (ch, n);
-                        require (std::isfinite (sample), "Jump2 mixed waves stay finite");
+                        require (std::isfinite (sample), "Jump benchmark output stays finite");
                         peak = std::max (peak, std::abs (sample));
                     }
             }
-            std::cout << "Jump2 Advanced=" << advanced << " eight notes: average="
+            std::cout << (factoryJumpBenchmark ? "Jump" : "Jump2") << " Advanced=" << advanced << " notes=" << noteCount << " average="
                       << totalMs / 1500 << " ms, worst=" << worstMs
                       << " ms, deadline=" << 1000 * blockSize / rate
                       << " ms, overruns=" << overruns << "/1500, peak=" << peak << std::endl;
             processor.releaseResources();
         }
         return 0;
+    }
+    // Mode changes must release the voice even after legato has changed its
+    // pitch away from JUCE's original note identity. Effects are bypassed so
+    // a lingering synth voice cannot hide behind an intentional effect tail.
+    for (double rate : { 44100.0, 48000.0, 96000.0 })
+    {
+        MySynthAudioProcessor processor;
+        processor.setCurrentProgram (0); // Jump
+        auto set = [&] (const char* id, float value)
+        {
+            auto* p = processor.apvts.getParameter (id);
+            p->setValueNotifyingHost (p->convertTo0to1 (value));
+        };
+        for (auto id : { "gateOn", "ladderOn", "chorusOn", "phaserOn", "reverbOn", "delayOn", "compOn", "limitOn" })
+            set (id, 0);
+        set ("glideOn", 1);
+        set ("release", 0.03f);
+        processor.setRateAndBufferSizeDetails (rate, 64);
+        processor.prepareToPlay (rate, 64);
+        juce::AudioBuffer<float> audio (2, 64);
+        juce::MidiBuffer midi;
+        auto render = [&] (int blocks)
+        {
+            float peak = 0;
+            for (int b = 0; b < blocks; ++b)
+            {
+                processor.processBlock (audio, midi);
+                midi.clear();
+                for (int ch = 0; ch < 2; ++ch)
+                    for (int n = 0; n < 64; ++n)
+                    {
+                        const float sample = audio.getSample (ch, n);
+                        require (std::isfinite (sample), "glide transitions stay finite");
+                        peak = std::max (peak, std::abs (sample));
+                    }
+            }
+            return peak;
+        };
+        midi.addEvent (juce::MidiMessage::noteOn (1, 60, 0.8f), 0);
+        render (20);
+        midi.addEvent (juce::MidiMessage::noteOn (1, 67, 0.3f), 0);
+        midi.addEvent (juce::MidiMessage::noteOff (1, 60), 1);
+        render (20);
+        set ("glideOn", 0);
+        render (1);
+        midi.addEvent (juce::MidiMessage::noteOff (1, 67), 0);
+        render ((int) rate / 64);
+        require (render (10) < 1.0e-6f, "disabling glide releases retargeted Jump note");
+
+        set ("glideOn", 1);
+        midi.addEvent (juce::MidiMessage::noteOn (1, 60, 0.8f), 0);
+        render (20);
+        midi.addEvent (juce::MidiMessage::allSoundOff (1), 0);
+        render (2);
+        require (render (10) < 1.0e-6f, "mono panic clears voices and held notes");
+        // A fresh note after panic must get its own attack and release.
+        midi.addEvent (juce::MidiMessage::noteOn (1, 72, 0.4f), 0);
+        require (render (20) > 1.0e-5f, "mono note starts after panic");
+        midi.addEvent (juce::MidiMessage::noteOff (1, 72), 0);
+        render ((int) rate / 64);
+        require (render (10) < 1.0e-6f, "mono note releases after panic");
+
+        set ("driftAmount", 0);
+        set ("osc1PhaseMode", 0);
+        set ("osc2PhaseMode", 0);
+        auto chordEnergy = [&] (bool simultaneous)
+        {
+            midi.addEvent (juce::MidiMessage::allSoundOff (1), 0);
+            render (2);
+            midi.addEvent (juce::MidiMessage::noteOn (1, 60, 0.5f), 0);
+            midi.addEvent (juce::MidiMessage::noteOn (1, 64, 0.5f), simultaneous ? 0 : 1);
+            midi.addEvent (juce::MidiMessage::noteOn (1, 67, 0.5f), simultaneous ? 0 : 2);
+            double energy = 0;
+            for (int b = 0; b < (int) rate / 320; ++b)
+            {
+                processor.processBlock (audio, midi);
+                midi.clear();
+                for (int n = 0; n < 64; ++n)
+                    energy += audio.getSample (0, n) * audio.getSample (0, n);
+            }
+            return energy;
+        };
+        const auto simultaneousEnergy = chordEnergy (true);
+        const auto staggeredEnergy = chordEnergy (false);
+        require (staggeredEnergy > 0 && std::abs (simultaneousEnergy / staggeredEnergy - 1.0) < 0.05,
+                 "simultaneous mono notes do not stack voices or spike level");
+
     }
     for (double rate : { 44100.0, 48000.0, 96000.0 })
     {

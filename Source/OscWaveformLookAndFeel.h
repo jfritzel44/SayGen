@@ -104,7 +104,7 @@ private:
                 break;
         }
 
-        g.setColour (juce::Colours::white.withAlpha (selected ? 0.95f : 0.45f));
+        g.setColour (selected ? juce::Colour (0xff79cba5) : juce::Colour (0xff879391));
         g.strokePath (p, juce::PathStrokeType (1.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
 

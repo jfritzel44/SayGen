@@ -1,8 +1,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-static const juce::Colour panelColour        (0xff3a3a3a);
-static const juce::Colour panelOutlineColour (0xff888888);
+static const juce::Colour panelColour        (0xff303637);
+static const juce::Colour panelOutlineColour (0xff454e4e);
 
 static juce::String osc2TypeName (double val)
 {
@@ -36,7 +36,7 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
       decayKnob   (p.apvts, "decay",   "Decay",      &oscLookAndFeel),
       sustainKnob (p.apvts, "sustain", "Sustain",    &oscLookAndFeel),
       releaseKnob (p.apvts, "release", "Release",    &oscLookAndFeel),
-      envAmountKnob  (p.apvts, "envAmount",  "EGR Amount",  &oscLookAndFeel),
+      envAmountKnob  (p.apvts, "envAmount",  "Env Amount",  &oscLookAndFeel),
       fltAttackKnob  (p.apvts, "fltAttack",  "Attack",   &oscLookAndFeel),
       fltDecayKnob   (p.apvts, "fltDecay",   "Decay",    &oscLookAndFeel),
       fltSustainKnob (p.apvts, "fltSustain", "Sustain",  &oscLookAndFeel),
@@ -86,6 +86,25 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
 
     masterVolumeKnob.getSlider().setTextValueSuffix (" dB");
     addAndMakeVisible (masterVolumeKnob);
+
+    // A deliberate edit on the main panel hands this oscillator back to
+    // its waveform selector. Gesture callbacks exclude preset/state updates
+    // and also cover wheel and accessibility edits.
+    auto useBasicOscillator = [this] (const char* parameterID)
+    {
+        auto* parameter = audioProcessor.apvts.getParameter (parameterID);
+        if (parameter != nullptr && parameter->getValue() >= 0.5f)
+        {
+            parameter->beginChangeGesture();
+            parameter->setValueNotifyingHost (0.0f);
+            parameter->endChangeGesture();
+            refreshOscTypeKnobs();
+        }
+    };
+    oscTypeKnob.getSlider().onDragStart = [useBasicOscillator]
+    { useBasicOscillator ("osc1ModernOn"); };
+    osc2TypeKnob.getSlider().onDragStart = [useBasicOscillator]
+    { useBasicOscillator ("osc2ModernOn"); };
 
     addAndMakeVisible (oscTypeKnob);
 
@@ -319,8 +338,6 @@ void MySynthAudioProcessorEditor::Content::mouseUp (const juce::MouseEvent& e)
 
     auto& slider = osc2TypeKnob.getSlider();
 
-    // Advanced Oscillator Settings' Modern flag is in charge instead;
-    // the knob is disabled but a stray click can still reach this listener
     if (! slider.isEnabled())
         return;
 
@@ -350,31 +367,26 @@ void MySynthAudioProcessorEditor::Content::timerCallback()
     refreshOscTypeKnobs();
 }
 
-// Advanced Oscillator Settings' Modern flag makes an oscillator ignore its
-// main-screen waveform knob entirely (see MySynthVoice::updateVoiceParams).
-// Without this, turning that knob while Modern is on looks like it should
-// change the sound but silently does nothing - so grey the knob out and
-// label it, rather than leaving it looking live when it isn't.
+// Keep waveform controls available while Wave Mix is active. Their user
+// gestures switch the corresponding oscillator back to its basic waveform.
 void MySynthAudioProcessorEditor::Content::refreshOscTypeKnobs()
 {
     static const juce::Colour advancedColour (0xff5aa9e6);
     static const juce::String advancedTooltip (
-        "Controlled by Advanced Oscillator Settings' Wave Mix instead of this knob");
+        "Wave Mix active. Adjust this knob to use the basic waveform instead.");
 
-    const bool osc1Advanced = audioProcessor.osc1ModernOn.load();
+    const bool osc1Advanced = audioProcessor.apvts.getRawParameterValue ("osc1ModernOn")->load() >= 0.5f;
     if (osc1Advanced != osc1ShowingAdvanced)
     {
         osc1ShowingAdvanced = osc1Advanced;
-        oscTypeKnob.getSlider().setEnabled (! osc1Advanced);
         oscTypeKnob.setStatusOverride (osc1Advanced ? "Adv" : "", advancedColour);
         oscTypeKnob.getSlider().setTooltip (osc1Advanced ? advancedTooltip : juce::String());
     }
 
-    const bool osc2Advanced = audioProcessor.osc2ModernOn.load();
+    const bool osc2Advanced = audioProcessor.apvts.getRawParameterValue ("osc2ModernOn")->load() >= 0.5f;
     if (osc2Advanced != osc2ShowingAdvanced)
     {
         osc2ShowingAdvanced = osc2Advanced;
-        osc2TypeKnob.getSlider().setEnabled (! osc2Advanced);
         if (osc2Advanced)
         {
             osc2TypeKnob.setStatusOverride ("Adv", advancedColour);
@@ -391,18 +403,18 @@ void MySynthAudioProcessorEditor::Content::refreshOscTypeKnobs()
 
 void MySynthAudioProcessorEditor::Content::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff2b2b2b));
+    g.fillAll (juce::Colour (0xff222829));
 
     // Menu bar
-    g.setColour (juce::Colour (0xff1f1f1f));
+    g.setColour (juce::Colour (0xff1b2021));
     g.fillRect (0, 0, getWidth(), 40);
-    g.setColour (juce::Colour (0xff555555));
+    g.setColour (juce::Colour (0xff394142));
     g.drawHorizontalLine (40, 0.0f, (float) getWidth());
 
     // MIDI indicator
-    g.setColour (midiLightOn ? juce::Colours::limegreen : juce::Colour (0xff1a4a1a));
+    g.setColour (midiLightOn ? juce::Colour (0xff79cba5) : juce::Colour (0xff1a4a1a));
     g.fillEllipse (12, 46, 20, 20);
-    g.setColour (juce::Colours::white);
+    g.setColour (juce::Colour (0xffe5e8df));
     g.setFont (juce::FontOptions (9.0f));
     g.drawText ("MIDI", 6, 68, 32, 14, juce::Justification::centred);
 
@@ -415,7 +427,7 @@ void MySynthAudioProcessorEditor::Content::paint (juce::Graphics& g)
 
     // "Select Preset" label sits beside the preset menu, which is below
     // the logo/oscilloscope row
-    g.setColour (juce::Colours::white);
+    g.setColour (juce::Colour (0xffe5e8df));
     g.setFont (juce::FontOptions (13.0f));
     g.drawText ("Select Preset", 342, 100, 110, 26, juce::Justification::centredLeft);
 
@@ -424,8 +436,8 @@ void MySynthAudioProcessorEditor::Content::paint (juce::Graphics& g)
         g.setColour (panelColour);
         g.fillRoundedRectangle (box, 10.0f);
         g.setColour (panelOutlineColour);
-        g.drawRoundedRectangle (box, 10.0f, 1.0f);
-        g.setColour (juce::Colours::white);
+        g.drawRoundedRectangle (box.reduced (0.5f), 10.0f, 1.0f);
+        g.setColour (juce::Colour (0xffe5e8df));
         // Sentence case: only the very first character capitalised, not
         // every word (so "Filter Mod" reads as "Filter mod").
         auto displayTitle = title.toLowerCase();
@@ -478,21 +490,13 @@ void MySynthAudioProcessorEditor::Content::resized()
     // matching the LCD's right edge
     oscilloscope.setBounds (462, 48, 236, 44);
 
-    // Oscillators section: each osc knob gets its octave LED bank beside it,
-    // then the 1-2 sync toggle, then detune, pitch, and unison, all on one
-    // row. The row sits at y=302 so every title label lines up horizontally;
-    // Osc 1 and Osc 2's waveform artwork is height-bound within its own box,
-    // so those two get extra height (growing downward, past the rest of the
-    // row) to render larger without disturbing their neighbours' label
-    // position. This now reaches the top/bottom slack available inside the
-    // "Oscillators" panel outline; growing further needs a taller panel.
-    // The row itself is already pixel-packed at 604px wide with no slack, so
-    // detune/pitch/octave/sync were each trimmed a little to make room for
-    // unison rather than widening the panel.
-    juce::Rectangle<int> oscRow (158, 302, 604, 88);
-    oscTypeKnob.setBounds        (oscRow.removeFromLeft (110).withWidth (104).withHeight (104));
+    // Keep the control labels below the section heading, with a shared
+    // baseline. Waveform selectors use a little extra vertical room for
+    // the icons around their knobs while staying inside the panel.
+    juce::Rectangle<int> oscRow (158, 312, 604, 88);
+    oscTypeKnob.setBounds        (oscRow.removeFromLeft (110).withWidth (104).withHeight (94));
     osc1OctaveSelector.setBounds (oscRow.removeFromLeft (58));
-    osc2TypeKnob.setBounds       (oscRow.removeFromLeft (110).withWidth (104).withHeight (104).translated (-10, 0));
+    osc2TypeKnob.setBounds       (oscRow.removeFromLeft (110).withWidth (104).withHeight (94).translated (-10, 0));
     osc2OctaveSelector.setBounds (oscRow.removeFromLeft (58).translated (-10, 0));
     oscSyncButton.setBounds      (oscRow.removeFromLeft (46));
     detuneKnob.setBounds         (oscRow.removeFromLeft (78));
@@ -519,24 +523,24 @@ void MySynthAudioProcessorEditor::Content::resized()
     // Mode sits in the panel's header row, right of the centred "Filter"
     // title, so the two knob rows below keep their full size.
     filterModeBox.setBounds (486, 421, 110, 21);
-    constexpr int filterColWidth = 460 / 4;
-    juce::Rectangle<int> filterRow (150, 442, 460, 88);
+    constexpr int filterColWidth = 444 / 4;
+    juce::Rectangle<int> filterRow (158, 446, 444, 84);
     cutoffKnob.setBounds    (filterRow.removeFromLeft (filterColWidth));
     resonanceKnob.setBounds (filterRow.removeFromLeft (filterColWidth));
     glideButton.setBounds   (filterRow.removeFromLeft (filterColWidth));
     glideTimeKnob.setBounds (filterRow);
 
-    juce::Rectangle<int> filterEnvRow (150, 532, 460, 88);
+    juce::Rectangle<int> filterEnvRow (158, 536, 444, 84);
     fltAttackKnob.setBounds  (filterEnvRow.removeFromLeft (filterColWidth));
     fltDecayKnob.setBounds   (filterEnvRow.removeFromLeft (filterColWidth));
     fltSustainKnob.setBounds (filterEnvRow.removeFromLeft (filterColWidth));
     fltReleaseKnob.setBounds (filterEnvRow);
 
     // Amp section: ADSR in a 2x2 grid
-    attackKnob.setBounds  (650, 442, 100, 88);
-    decayKnob.setBounds   (760, 442, 100, 88);
-    sustainKnob.setBounds (650, 532, 100, 88);
-    releaseKnob.setBounds (760, 532, 100, 88);
+    attackKnob.setBounds  (644, 446, 100, 84);
+    decayKnob.setBounds   (766, 446, 100, 84);
+    sustainKnob.setBounds (644, 536, 100, 84);
+    releaseKnob.setBounds (766, 536, 100, 84);
 
     // Modulation section: mirrors Filter Mod's tall single column on the
     // opposite side. Source sits right under Rate, Destination right under
