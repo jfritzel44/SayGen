@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "MeowNames.h"
 
 static const juce::Colour panelColour        (0xff303637);
 static const juce::Colour panelOutlineColour (0xff454e4e);
@@ -14,6 +15,7 @@ static juce::String osc2TypeName (double val)
 MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
     : audioProcessor (p),
       qwertyKeyboard (p.keyboardState),
+      meowLevel (p.apvts, "meowLevel", "Meow Level", &oscLookAndFeel),
       lcdScreen (p.apvts),
       oscilloscope (p.oscilloscope),
       outputMeter (p.outputMeter),
@@ -195,6 +197,15 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
     };
 
     filterModeBox.addItemList ({ "LP 24", "LP 12", "BP 24", "BP 12", "HP 24", "HP 12", "Notch" }, 1);
+    styleComboBox (meowBox);
+    meowBox.addItemList (meowNames(), 1);
+    meowBox.setTooltip ("Resynthesize a meow with pitched harmonics. Replaces the synth source; Off restores oscillators.");
+    meowAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
+        (p.apvts, "meowSample", meowBox);
+    addAndMakeVisible (meowBox);
+    addAndMakeVisible (meowPreview);
+    addAndMakeVisible (meowLevel);
+    meowPreview.onClick = [this] { audioProcessor.previewMeow(); };
     styleComboBox (filterModeBox);
     filterModeBox.setTooltip ("Which taps of the ladder are mixed to the output. The filter core, "
                               "its drive and its resonance are the same in every mode.");
@@ -247,6 +258,7 @@ MySynthAudioProcessorEditor::Content::~Content()
 {
     stopTimer();
 
+    meowBox.setLookAndFeel (nullptr);
     presetBox.setLookAndFeel (nullptr);
     filterModeBox.setLookAndFeel (nullptr);
     lfoSourceBox.setLookAndFeel (nullptr);
@@ -411,6 +423,10 @@ void MySynthAudioProcessorEditor::Content::paint (juce::Graphics& g)
     g.setColour (juce::Colour (0xff394142));
     g.drawHorizontalLine (40, 0.0f, (float) getWidth());
 
+    g.setColour (juce::Colour (0xffe5e8df));
+    g.setFont (juce::FontOptions (16.0f));
+    g.drawText ("Meow Resynthesis", 720, 65, 290, 26, juce::Justification::centredLeft);
+
     // MIDI indicator
     g.setColour (midiLightOn ? juce::Colour (0xff79cba5) : juce::Colour (0xff1a4a1a));
     g.fillEllipse (12, 46, 20, 20);
@@ -482,6 +498,9 @@ void MySynthAudioProcessorEditor::Content::resized()
 {
     // Preset menu sits below the logo/scope row, to the right of its label
     presetBox.setBounds (460, 100, 238, 26);
+    meowBox.setBounds (720, 100, 290, 26);
+    meowPreview.setBounds (720, 140, 100, 28);
+    meowLevel.setBounds (850, 145, 100, 88);
 
     // LCD effects screen at the top center, beneath the preset menu row
     lcdScreen.setBounds (getWidth() / 2 - 178, 134, 356, 144);

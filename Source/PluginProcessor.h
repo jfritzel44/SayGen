@@ -87,6 +87,7 @@ public:
     OutputMeter outputMeter;
 
     juce::AudioProcessorValueTreeState apvts;
+    void previewMeow() { meowPreviewRequested.store (true); }
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -151,6 +152,11 @@ private:
 
     juce::MidiBuffer enhancedMidi;
     juce::Synthesiser synth;
+    juce::Synthesiser meowSynth;
+    juce::AudioBuffer<float> meowBuffer;
+    juce::MidiBuffer meowMidi;
+    juce::SmoothedValue<float> meowGain, meowSourceMix;
+    std::atomic<bool> meowPreviewRequested { false };
     juce::dsp::NoiseGate<float> gate;
     juce::dsp::LadderFilter<float> ladder;
     juce::dsp::Chorus<float> chorus;

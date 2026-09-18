@@ -74,6 +74,10 @@ private:
         QwertyMidiKeyboard qwertyKeyboard;
         juce::Image logoImage;
 
+        juce::ComboBox meowBox;
+        juce::TextButton meowPreview { "Preview" };
+        LabeledKnob meowLevel;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> meowAttachment;
         juce::ComboBox presetBox;
         LcdScreen lcdScreen;
         Oscilloscope& oscilloscope;

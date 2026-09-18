@@ -328,3 +328,21 @@ release, preventing an earlier -30 dB / 1 ms setting from carrying over.
 Effects specified by the patch are then enabled as authored. New user-saved
 patches capture all effects parameters; older patches missing them use defaults.
 Master volume is preserved. This resets controls, not stored delay/reverb tails.
+
+## Meow resynthesis
+
+Selecting a meow replaces the ordinary oscillator output with additive synthesis.
+The recordings are analyzed into time-varying spectral envelopes at processor
+construction; playback generates up to 64 sine harmonics at the MIDI note's
+pitch, with a two-semitone pitch-bend range. No recorded audio is mixed into the
+output. Spectral envelopes keep their original duration and formant frequencies
+as notes change, so higher notes do not speed up the meow. This deliberately
+sounds more synthetic and does not preserve the recording's noisy transients or
+original pitch contour. The source remains a one-shot, with an 80 ms note-off
+release, and uses the shared effects and master controls. Oscillator and voice
+filter controls currently belong to the ordinary synth, not this additive source.
+
+Meow Level sets the resynthesized source's volume. Off restores the normal synth;
+source changes crossfade over 20 ms. The selection is latched by each meow voice
+at note-on. The existing meow parameter IDs and library selections are retained,
+but saved patches using meows now use this synthesis instead of sample layering.

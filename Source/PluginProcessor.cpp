@@ -1,5 +1,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "MeowNames.h"
+#include "MeowSampler.h"
+#include "MeowBankData.h"
 #include "Presets.h"
 #include <algorithm>
 
@@ -385,6 +388,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout MySynthAudioProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         "osc2Coarse", "Oscillator 2 Coarse Tune",
         juce::NormalisableRange<float> (-24.0f, 24.0f, 1.0f), 0.0f));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        "meowSample", "Meow", meowNames(), 0));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "meowLevel", "Meow Level", 0.0f, 1.0f, 0.5f));
     return layout;
 }
 
@@ -399,6 +406,21 @@ MySynthAudioProcessor::MySynthAudioProcessor()
                         ),
        apvts (*this, nullptr, "Parameters", createParameterLayout())
 {
+    juce::MemoryInputStream stream (meowBankData, sizeof (meowBankData), false);
+    juce::ZipFile archive (stream);
+    juce::WavAudioFormat format;
+    for (int i = 0; i < archive.getNumEntries(); ++i)
+    {
+        std::unique_ptr<juce::AudioFormatReader> reader (
+            format.createReaderFor (archive.createStreamForEntry (i), true));
+        if (reader != nullptr)
+            meowSynth.addSound (new SelectableMeowSound (*reader, i + 1,
+                *apvts.getRawParameterValue ("meowSample")));
+    }
+    for (int i = 0; i < 16; ++i)
+        meowSynth.addVoice (new MeowSynthesisVoice());
+    meowSynth.setNoteStealingEnabled (true);
+    meowSynth.setMinimumRenderingSubdivisionSize (1);
     presets = getFactoryPresets();
     numFactoryPresets = presets.size();
 
@@ -515,7 +537,8 @@ void MySynthAudioProcessor::setCurrentProgram (int index)
                      // neutral - mode LP 24, no PWM, no noise, no ring mod -
                      // so every preset written before they existed loads
                      // sounding exactly as it did.
-                     "filterMode", "pwmDepth", "pwmRate", "noiseLevel", "noiseColour", "ringMod" })
+                     "filterMode", "pwmDepth", "pwmRate", "noiseLevel", "noiseColour", "ringMod",
+                     "meowSample", "meowLevel" })
         if (auto* param = apvts.getParameter (id))
             param->setValueNotifyingHost (param->getDefaultValue());
 
@@ -543,6 +566,7 @@ void MySynthAudioProcessor::saveCurrentPatchAsPreset (const juce::String& name)
     // factory presets in Presets.h capture (oscillators, envelopes, filter)
     static const char* patchParamIDs[] =
     {
+        "meowSample", "meowLevel",
         "oscType", "osc2Type", "osc1Octave", "osc2Octave", "detune", "unisonVoices", "pitch", "driftAmount",
         "osc1ModernOn", "osc1SawMix", "osc1PulseMix", "osc1TriMix", "osc1PulseWidth", "osc1SubOctave",
         "osc2ModernOn", "osc2SawMix", "osc2PulseMix", "osc2TriMix", "osc2PulseWidth", "osc2SubOctave",
@@ -580,6 +604,14 @@ void MySynthAudioProcessor::saveCurrentPatchAsPreset (const juce::String& name)
 //==============================================================================
 void MySynthAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    meowSynth.allNotesOff (0, false);
+    meowSynth.setCurrentPlaybackSampleRate (sampleRate);
+    meowBuffer.setSize (getTotalNumOutputChannels(), 512);
+    meowMidi.ensureSize (2048);
+    meowGain.reset (sampleRate, 0.02);
+    meowSourceMix.reset (sampleRate, 0.02);
+    meowSourceMix.setCurrentAndTargetValue (apvts.getRawParameterValue ("meowSample")->load() > 0 ? 1.0f : 0.0f);
+    meowGain.setCurrentAndTargetValue (apvts.getRawParameterValue ("meowLevel")->load());
     lfoPhase = 0.0;
     lfoHeldRandom = 0.0f;
     lastAmpGain = 1.0f;
@@ -957,6 +989,33 @@ void MySynthAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
 
         startSample += chunkSize;
+    }
+
+    // Replace the ordinary synth with the resynthesized meow before shared effects.
+    meowSourceMix.setTargetValue (apvts.getRawParameterValue ("meowSample")->load() > 0 ? 1.0f : 0.0f);
+    const bool preview = meowPreviewRequested.exchange (false);
+    meowGain.setTargetValue (apvts.getRawParameterValue ("meowLevel")->load());
+    for (int offset = 0; offset < buffer.getNumSamples(); offset += 512)
+    {
+        const int count = juce::jmin (512, buffer.getNumSamples() - offset);
+        meowBuffer.clear();
+        meowMidi.clear();
+        meowMidi.addEvents (midiMessages, offset, count, -offset);
+        if (preview && offset == 0)
+        {
+            meowMidi.addEvent (juce::MidiMessage::allSoundOff (16), 0);
+            meowMidi.addEvent (juce::MidiMessage::noteOn (16, 60, 0.8f), 0);
+        }
+        meowSynth.renderNextBlock (meowBuffer, meowMidi, 0, count);
+        for (int sample = 0; sample < count; ++sample)
+        {
+            const float gain = meowGain.getNextValue();
+            const float sourceMix = meowSourceMix.getNextValue();
+            for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+                buffer.setSample (channel, offset + sample,
+                    buffer.getSample (channel, offset + sample) * (1.0f - sourceMix)
+                    + meowBuffer.getSample (channel, sample) * gain * sourceMix);
+        }
     }
 
     juce::dsp::AudioBlock<float> block (buffer);

@@ -64,6 +64,97 @@ struct VoiceFixture
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI init;
+    {
+        MySynthAudioProcessor processor;
+        auto set = [&] (const char* id, float value)
+        {
+            auto* p = processor.apvts.getParameter (id);
+            p->setValueNotifyingHost (p->convertTo0to1 (value));
+        };
+        processor.prepareToPlay (48000, 1024);
+        juce::AudioBuffer<float> buffer (2, 1024);
+        juce::MidiBuffer midi;
+        auto previewEnergy = [&]
+        {
+            processor.prepareToPlay (48000, 1024);
+            processor.previewMeow();
+            double energy = 0;
+            for (int block = 0; block < 100; ++block)
+            {
+                processor.processBlock (buffer, midi);
+                for (int i = 0; i < buffer.getNumSamples(); ++i)
+                {
+                    const auto sample = buffer.getSample (0, i);
+                    require (std::isfinite (sample), "meow output is finite");
+                    energy += sample * sample;
+                }
+            }
+            return energy;
+        };
+        require (previewEnergy() == 0, "Off does not preview a meow");
+        set ("meowSample", 1);
+        require (previewEnergy() > 0.001, "first embedded meow plays without MIDI");
+        set ("meowSample", 440);
+        require (previewEnergy() > 0.001, "last embedded meow plays");
+        set ("meowLevel", 0);
+        require (previewEnergy() == 0, "zero meow level mutes resynthesis");
+        // A selected meow replaces oscillators, including when its level is zero.
+        processor.prepareToPlay (48000, 1024);
+        midi.addEvent (juce::MidiMessage::noteOn (1, 60, 1.0f), 0);
+        processor.processBlock (buffer, midi);
+        require (buffer.getMagnitude (0, buffer.getNumSamples()) == 0,
+                 "selected muted meow does not leak the ordinary synth");
+        midi.clear();
+        set ("meowSample", 0);
+        processor.prepareToPlay (48000, 1024);
+        midi.addEvent (juce::MidiMessage::noteOn (1, 60, 1.0f), 0);
+        processor.processBlock (buffer, midi);
+        require (buffer.getMagnitude (0, buffer.getNumSamples()) > 0,
+                 "Off restores ordinary synth oscillators");
+        midi.clear();
+        set ("meowSample", 440);
+        set ("meowLevel", 0.5f);
+        for (double rate : { 44100.0, 48000.0, 96000.0 })
+        {
+            processor.prepareToPlay (rate, 1024);
+            midi.addEvent (juce::MidiMessage::noteOn (1, 72, 0.8f), 127);
+            double energy = 0;
+            for (int block = 0; block < 100; ++block)
+            {
+                processor.processBlock (buffer, midi);
+                midi.clear();
+                for (int i = 0; i < buffer.getNumSamples(); ++i)
+                {
+                    const float value = buffer.getSample (0, i);
+                    require (std::isfinite (value), "resynthesis is finite at supported rates");
+                    if (block == 0 && i < 127)
+                        require (value == 0, "resynthesis respects MIDI onset offset");
+                    energy += value * value;
+                }
+            }
+            require (energy > 0.001, "transposed resynthesis produces audio");
+            midi.addEvent (juce::MidiMessage::noteOff (1, 72), 0);
+            for (int block = 0; block < 20; ++block)
+            {
+                processor.processBlock (buffer, midi);
+                midi.clear();
+            }
+            require (buffer.getMagnitude (0, buffer.getNumSamples()) < 1.0e-6f,
+                     "resynthesized meow releases after note-off");
+        }
+        set ("meowLevel", 0.37f);
+        juce::MemoryBlock state;
+        processor.getStateInformation (state);
+        set ("meowSample", 0);
+        processor.setStateInformation (state.getData(), (int) state.getSize());
+        require (processor.apvts.getRawParameterValue ("meowSample")->load() == 440,
+                 "meow selection restores from state");
+        require (std::abs (processor.apvts.getRawParameterValue ("meowLevel")->load() - 0.37f) < 0.001f,
+                 "meow level restores from state");
+        processor.setCurrentProgram (0);
+        require (processor.apvts.getRawParameterValue ("meowSample")->load() == 0,
+                 "legacy factory patches reset meow source");
+    }
     const bool factoryJumpBenchmark = argc == 2 && juce::String (argv[1]) == "--factory-jump-benchmark";
     if (factoryJumpBenchmark || (argc == 2 && juce::String (argv[1]) == "--jump-benchmark"))
     {
