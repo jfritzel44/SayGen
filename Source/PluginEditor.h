@@ -12,6 +12,7 @@
 #include "Oscilloscope.h"
 #include "VelocityCurveEditor.h"
 #include "ModernOscEditor.h"
+#include "AISoundDesigner.h"
 
 // The editor is a thin resizable shell around Content, which draws/lays out
 // at a fixed design resolution. The shell scales Content uniformly to fill
@@ -39,6 +40,19 @@ private:
 
         void rebuildPresetMenu();
         void showSavePatchDialog();
+        void generateSound();
+        void finishSoundGeneration();
+        void setAIBusy (bool);
+
+        juce::TextEditor apiKeyBox, aiModelBox, soundDescriptionBox;
+        juce::HyperlinkButton apiKeyLink { "Get Gemini API key", juce::URL ("https://aistudio.google.com/apikey") };
+        juce::Label soundTitle, aiStatus;
+        juce::TextButton generateButton { "Generate sound" }, undoSoundButton { "Undo" }, cancelSoundButton { "Cancel" };
+        std::unique_ptr<syngen::ai::Generation> generation;
+        syngen::ai::Patch generationStartPatch, undoSoundPatch;
+        int generationStartProgram = 0;
+        double generationStartedAt = 0;
+        bool generationCancelled = false;
 
         // Preset combo box item IDs: "Save Current Patch" is pinned first, then
         // a separator, then the real presets starting at firstPresetItemId

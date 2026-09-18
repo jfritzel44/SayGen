@@ -88,6 +88,10 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
+    // Message-thread UI settings only: deliberately excluded from host state/presets.
+    juce::String aiApiKey, aiDescription;
+    juce::String aiModel { "gemini-2.5-flash" };
+
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
 

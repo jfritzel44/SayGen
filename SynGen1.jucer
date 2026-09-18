@@ -23,6 +23,7 @@
             file="Source/LedOctaveSelector.h"/>
       <FILE id="qwk001" name="QwertyMidiKeyboard.h" compile="0" resource="0"
             file="Source/QwertyMidiKeyboard.h"/>
+      <FILE id="ais001" name="AISoundDesigner.h" compile="0" resource="0" file="Source/AISoundDesigner.h"/>
       <FILE id="prs001" name="Presets.h" compile="0" resource="0" file="Source/Presets.h"/>
       <FILE id="lcd001" name="LcdScreen.h" compile="0" resource="0" file="Source/LcdScreen.h"/>
       <FILE id="stb001" name="SyncToggleButton.h" compile="0" resource="0"

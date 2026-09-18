@@ -55,6 +55,79 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
     startTimerHz (30);
     qwertyKeyboard.attachTo (*this);
 
+    auto styleText = [] (juce::TextEditor& box, const juce::String& name)
+    {
+        box.setName (name);
+        box.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff171d1e));
+        box.setColour (juce::TextEditor::textColourId, juce::Colours::white);
+        box.setColour (juce::TextEditor::outlineColourId, panelOutlineColour);
+        box.setColour (juce::TextEditor::focusedOutlineColourId, juce::Colour (0xff79cba5));
+        box.setFont (juce::FontOptions (13.0f));
+    };
+    styleText (apiKeyBox, "Gemini API key");
+    apiKeyBox.setPasswordCharacter ('*');
+    apiKeyBox.setInputRestrictions (256, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_");
+    apiKeyBox.setTextToShowWhenEmpty ("Paste your Gemini API key", juce::Colours::grey);
+    apiKeyBox.setTooltip ("Kept in memory for this synth instance. Never saved in a patch or project.");
+    apiKeyBox.setText (p.aiApiKey, false);
+    apiKeyBox.onTextChange = [this] { audioProcessor.aiApiKey = apiKeyBox.getText().trim(); };
+    addAndMakeVisible (apiKeyBox);
+    addAndMakeVisible (apiKeyLink);
+    apiKeyLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff79cba5));
+
+    styleText (aiModelBox, "Gemini model");
+    aiModelBox.setInputRestrictions (100, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.");
+    aiModelBox.setText (p.aiModel, false);
+    aiModelBox.setTooltip ("Gemini model ID. Free-tier availability and quotas depend on your Google project.");
+    aiModelBox.onTextChange = [this] { audioProcessor.aiModel = aiModelBox.getText().trim(); };
+    addAndMakeVisible (aiModelBox);
+
+    soundTitle.setText ("DESCRIBE YOUR SOUND", juce::dontSendNotification);
+    soundTitle.setFont (juce::FontOptions (12.0f));
+    soundTitle.setColour (juce::Label::textColourId, juce::Colour (0xff79cba5));
+    addAndMakeVisible (soundTitle);
+    styleText (soundDescriptionBox, "Sound description");
+    soundDescriptionBox.setMultiLine (true);
+    soundDescriptionBox.setReturnKeyStartsNewLine (false);
+    soundDescriptionBox.setInputRestrictions (2000);
+    soundDescriptionBox.setTextToShowWhenEmpty ("A warm, wide pad with a slow attack...", juce::Colours::grey);
+    soundDescriptionBox.setText (p.aiDescription, false);
+    soundDescriptionBox.onTextChange = [this] { audioProcessor.aiDescription = soundDescriptionBox.getText(); };
+    soundDescriptionBox.onReturnKey = [this] { generateSound(); };
+    soundDescriptionBox.onEscapeKey = [this] { grabKeyboardFocus(); };
+    addAndMakeVisible (soundDescriptionBox);
+    generateButton.onClick = [this] { generateSound(); };
+    undoSoundButton.onClick = [this]
+    {
+        syngen::ai::apply (audioProcessor.apvts, undoSoundPatch);
+        undoSoundPatch.clear();
+        undoSoundButton.setEnabled (false);
+        presetBox.setSelectedId (0, juce::dontSendNotification);
+        presetBox.setTextWhenNothingSelected ("Restored sound (unsaved)");
+        aiStatus.setText ("Previous sound restored.", juce::dontSendNotification);
+    };
+    cancelSoundButton.onClick = [this]
+    {
+        if (generation != nullptr)
+        {
+            generationCancelled = true;
+            generation->cancel();
+            cancelSoundButton.setEnabled (false);
+            aiStatus.setText ("Cancelling...", juce::dontSendNotification);
+        }
+    };
+    for (auto* button : { &generateButton, &undoSoundButton, &cancelSoundButton })
+    {
+        button->setColour (juce::TextButton::buttonColourId, panelColour);
+        addAndMakeVisible (*button);
+    }
+    undoSoundButton.setEnabled (false);
+    cancelSoundButton.setEnabled (false);
+    aiStatus.setFont (juce::FontOptions (12.0f));
+    aiStatus.setJustificationType (juce::Justification::topLeft);
+    aiStatus.setText ("Generate sends your description and knob settings to Gemini. Play notes to hear the result.", juce::dontSendNotification);
+    addAndMakeVisible (aiStatus);
+
     presetBox.setTextWhenNothingSelected ("Presets");
     presetBox.setLookAndFeel (&comboBoxLookAndFeel);
     presetBox.setColour (juce::ComboBox::backgroundColourId, panelColour);
@@ -246,11 +319,84 @@ MySynthAudioProcessorEditor::Content::Content (MySynthAudioProcessor& p)
 MySynthAudioProcessorEditor::Content::~Content()
 {
     stopTimer();
+    generation.reset();
 
     presetBox.setLookAndFeel (nullptr);
     filterModeBox.setLookAndFeel (nullptr);
     lfoSourceBox.setLookAndFeel (nullptr);
     lfoDestBox.setLookAndFeel (nullptr);
+}
+
+void MySynthAudioProcessorEditor::Content::setAIBusy (bool busy)
+{
+    generateButton.setEnabled (! busy);
+    generateButton.setButtonText (busy ? "Generating..." : "Generate sound");
+    cancelSoundButton.setEnabled (busy);
+    undoSoundButton.setEnabled (! busy && ! undoSoundPatch.empty());
+    apiKeyBox.setEnabled (! busy);
+    aiModelBox.setEnabled (! busy);
+}
+
+void MySynthAudioProcessorEditor::Content::generateSound()
+{
+    if (generation != nullptr) return;
+    auto prompt = soundDescriptionBox.getText().trim();
+    auto key = apiKeyBox.getText().trim();
+    auto model = aiModelBox.getText().trim();
+    if (prompt.isEmpty() || key.isEmpty() || model.isEmpty())
+    {
+        aiStatus.setText ("Enter your Gemini API key, model and sound description first.", juce::dontSendNotification);
+        return;
+    }
+    generationStartPatch = syngen::ai::snapshot (audioProcessor);
+    generationStartProgram = audioProcessor.getCurrentProgram();
+    generationCancelled = false;
+    generationStartedAt = juce::Time::getMillisecondCounterHiRes();
+    syngen::ai::Request request { model, key, prompt, syngen::ai::instructions (audioProcessor),
+                                syngen::ai::schema (audioProcessor) };
+    generation = std::make_unique<syngen::ai::Generation> (request);
+    setAIBusy (true);
+    aiStatus.setText ("Designing your sound with Gemini...", juce::dontSendNotification);
+    if (! generation->startThread())
+    {
+        generation.reset();
+        setAIBusy (false);
+        aiStatus.setText ("Could not start generation. Try again.", juce::dontSendNotification);
+    }
+}
+
+void MySynthAudioProcessorEditor::Content::finishSoundGeneration()
+{
+    if (generation == nullptr) return;
+    if (! generationCancelled && juce::Time::getMillisecondCounterHiRes() - generationStartedAt > 120000.0)
+    {
+        generationCancelled = true;
+        generation->cancel();
+    }
+    if (! generation->finished()) return;
+
+    juce::String status;
+    syngen::ai::Patch patch;
+    if (generationCancelled)
+        status = "Generation cancelled or timed out. Your sound is unchanged.";
+    else if (generation->error.isNotEmpty())
+        status = generation->error;
+    else if (generationStartProgram != audioProcessor.getCurrentProgram()
+             || generationStartPatch != syngen::ai::snapshot (audioProcessor))
+        status = "Your sound changed during generation. Generate again to use the latest settings.";
+    else if (auto result = syngen::ai::parsePatch (generation->patchText, audioProcessor.apvts, patch); result.failed())
+        status = result.getErrorMessage();
+    else
+    {
+        undoSoundPatch = generationStartPatch;
+        syngen::ai::apply (audioProcessor.apvts, patch);
+        presetBox.setSelectedId (0, juce::dontSendNotification);
+        presetBox.setTextWhenNothingSelected ("AI sound (unsaved)");
+        status = "Sound ready. Play notes, refine your description, or save it from Presets.";
+    }
+    generation.reset();
+    setAIBusy (false);
+    aiStatus.setText (status, juce::dontSendNotification);
 }
 
 void MySynthAudioProcessorEditor::Content::rebuildPresetMenu()
@@ -354,10 +500,12 @@ void MySynthAudioProcessorEditor::Content::mouseUp (const juce::MouseEvent& e)
 
 void MySynthAudioProcessorEditor::Content::timerCallback()
 {
+    finishSoundGeneration();
+
     // Give the qwerty keyboard focus once we're on screen
     if (! hasGrabbedFocus && isShowing())
     {
-        grabKeyboardFocus();
+        if (! hasKeyboardFocus (true)) grabKeyboardFocus();
         hasGrabbedFocus = true;
     }
 
@@ -480,6 +628,16 @@ void MySynthAudioProcessorEditor::Content::paint (juce::Graphics& g)
 
 void MySynthAudioProcessorEditor::Content::resized()
 {
+    apiKeyBox.setBounds (12, 8, 258, 24);
+    apiKeyLink.setBounds (278, 8, 145, 24);
+    aiModelBox.setBounds (435, 8, 190, 24);
+    soundTitle.setBounds (20, 86, 306, 22);
+    soundDescriptionBox.setBounds (20, 112, 306, 66);
+    generateButton.setBounds (20, 186, 136, 26);
+    undoSoundButton.setBounds (164, 186, 74, 26);
+    cancelSoundButton.setBounds (246, 186, 80, 26);
+    aiStatus.setBounds (20, 220, 306, 58);
+
     // Preset menu sits below the logo/scope row, to the right of its label
     presetBox.setBounds (460, 100, 238, 26);
 

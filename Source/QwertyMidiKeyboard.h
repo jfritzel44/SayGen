@@ -72,8 +72,16 @@ private:
         bool isDown;
     };
 
+    static bool isEditingText()
+    {
+        auto* focused = juce::Component::getCurrentlyFocusedComponent();
+        return dynamic_cast<juce::TextEditor*> (focused) != nullptr
+            || (focused != nullptr && focused->findParentComponentOfClass<juce::TextEditor>() != nullptr);
+    }
+
     bool keyPressed (const juce::KeyPress& key, juce::Component*) override
     {
+        if (isEditingText()) return false;
         // Consume presses of mapped keys (including auto-repeats) so they
         // don't reach other handlers or beep.
         auto c = juce::CharacterFunctions::toLowerCase (key.getTextCharacter());
@@ -87,6 +95,7 @@ private:
 
     bool keyStateChanged (bool, juce::Component*) override
     {
+        if (isEditingText()) { allNotesOff(); return false; }
         bool used = false;
 
         for (auto& m : mappings)
@@ -114,7 +123,7 @@ private:
     // Release held notes if focus moves away, otherwise they'd hang.
     void globalFocusChanged (juce::Component* focused) override
     {
-        if (target == nullptr
+        if (isEditingText() || target == nullptr
             || focused == nullptr
             || (focused != target && ! target->isParentOf (focused)))
             allNotesOff();
